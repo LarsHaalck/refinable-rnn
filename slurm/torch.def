@@ -1,0 +1,20 @@
+# Singularity/Apptainer definition file
+Bootstrap: docker
+From: pytorch/pytorch:1.10.0-cuda11.3-cudnn8-devel
+
+%environment
+    export LC_ALL=C
+
+%post
+    /opt/conda/bin/python -m pip install \
+        torchvision==0.11.1 \
+        einops==0.4.0 \
+        matplotlib==3.5.1 \
+        tqdm==4.62.3 \
+        scipy==1.7.3 \
+        torchinfo==1.6.3 \
+        pillow==9.0.0
+
+%runscript
+    exec /bin/bash
+
