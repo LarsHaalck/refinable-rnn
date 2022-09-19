@@ -93,6 +93,12 @@ class InverseTransformGtClassification2x1d(nn.Module):
         self.shape = np.array(pair(image_shape))
 
     def forward(self, data):
+        if isinstance(data, list):
+            return [self.forward_helper(d) for d in data]
+        else:
+            return self.forward_helper(data)
+
+    def forward_helper(self, data):
         data = torch.argmax(data, dim=-1)
         return data
 
@@ -121,7 +127,7 @@ class InverseTransformGtClassification2d(nn.Module):
         super().__init__()
         self.shape = np.array(pair(image_shape))
 
-    def forward(self, data):
+    def forward_helper(self, data):
         dim = data.dim()
         if dim == 4:
             b, t, _, _ = data.shape
@@ -135,6 +141,12 @@ class InverseTransformGtClassification2d(nn.Module):
             data = data[:, 1:]
         # need to swap y,x to x,y
         return data[..., [1, 0]].contiguous()
+
+    def forward(self, data):
+        if isinstance(data, list):
+            return [self.forward_helper(d) for d in data]
+        else:
+            return self.forward_helper(data)
 
     def __repr__(self):
         return self.__class__.__name__ + '(image_shape={0})'.format(self.shape.tolist())
@@ -250,9 +262,8 @@ class RandomNoise(nn.Module):
         return data
 
     def __repr__(self):
-        return self.__class__.__name__ + '(p={}, mean={}, sigma={}, unary_only={})'.format(
-            self.p, self.mean, self.sigma, self.unary_only
-        )
+        return self.__class__.__name__ + '(p={}, mean={}, sigma={}, unary_only={})'\
+            .format(self.p, self.mean, self.sigma, self.unary_only)
 
 
 class RandomRepeat(nn.Module):

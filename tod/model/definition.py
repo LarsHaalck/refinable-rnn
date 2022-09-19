@@ -88,6 +88,7 @@ class ModelInterface():
         self.projector = projector
         self.loss = loss
 
+        # for resnet types the embedding is part of the encoder
         if self.type in [ModelType.ResnetClass, ModelType.ResnetReg]:
             self.encoder = nn.Sequential(encoder, embedding)
         else:
@@ -108,38 +109,3 @@ class ModelInterface():
 
         # recurrent
         # shared (fixed) -> lstm -> projector (loaded + refined)
-
-    # def forward(self, data) -> Tensor:
-    #     b, t, c, h, w = data.size()
-    #     data = data.view(b * t, c, h, w)
-    #     data = self.encoder(data)
-
-    #     if self.type in [ModelType.ResnetClass, ModelType.ResnetReg]:
-    #         data = self.embedding(data)
-
-    #     if self.mode == ModelMode.Single:
-    #         data = self.projector(data)
-    #     else:
-    #         if self.type == [ModelType.HourGlass, ModelType.HourGlassSqueeze]:
-    #             data = self.embedding
-
-    #         data = self.lstm(data)
-
-    #     return data
-
-
-# class SingleNet(BaseNetwork):
-
-#     def __int__(self):
-#         self
-
-#     def forward(self, data) -> Tensor:
-#         b, t, c, h, w = data.size()
-#         data = data.view(b * t, c, h, w)
-#         data = self.encoder(data)
-
-#         if self.type in [ModelType.ResnetClass, ModelType.ResnetReg]:
-#             data = self.embedding(data)
-
-#         data = self.projector(data)
-#         return data

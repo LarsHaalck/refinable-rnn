@@ -47,8 +47,9 @@ model_type = ModelType.HourGlassSqueeze
 
 # {{{ load/dave
 store_path = (
-    "/data/ant-ml-res/test_re_re_single_classification_negloss_G{}S{}LR{}-".
-    format(kernel_size, kernel_sigma, lr) + datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+    "/data/ant-ml-res/single_{}_{}_C{}_G{}_S{}_LR{}-".
+    format(input_type, model_type, crop, kernel_size, kernel_sigma, lr) +
+    datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
 )
 # empty load_path means "do not load anything"
 load_path = ""
@@ -59,7 +60,7 @@ model_interface = ModelInterface(
     type=model_type,
     input_type=input_type,
     crop=crop,
-    kernel_size=kernel_size,    # only used by hourglass
+    kernel_size=kernel_size,  # only used by hourglass
     kernel_sigma=kernel_sigma,  # only used by hourglass
     freeze_encoder=False,
     model_mode=ModelMode.Single
@@ -90,13 +91,10 @@ transform = nn.Sequential(
 inv_transform = model_interface.inv_transform
 
 train_datasets, test_datasets = get_folders_from_fold_file(
-    csv_file="/data/ant-ml/dataset_folds_small.csv", path_prefix="/data/ant-ml", test_fold=2
+    csv_file="/data/ant-ml/dataset_folds.csv",
+    path_prefix="/data/ant-ml",
+    test_fold=2
 )
-# train_datasets, test_datasets = get_folders_from_fold_file(
-#     csv_file="/media/data/ant/dataset_folds_test.csv",
-#     path_prefix="/media/data/ant",
-#     test_fold=2
-# )
 log.info("Train sets: {}".format(train_datasets))
 log.info("Test sets: {}".format(test_datasets))
 dataset = VideoDataset(
@@ -126,14 +124,10 @@ log.info("Test Dataset: {}".format(test_set))
 
 # {{{ data selection
 # for overfitting:
-train_set = torch.utils.data.Subset(dataset, np.arange(32))
-test_set = torch.utils.data.Subset(dataset, np.arange(32) + 32)
+# train_set = torch.utils.data.Subset(dataset, np.arange(32))
+# test_set = torch.utils.data.Subset(dataset, np.arange(32) + 32)
 
-# data_length = len(dataset)
-# train_length = int(0.9 * data_length)
-# test_length = data_length - train_length
-# train_set, test_set = random_split(dataset, (train_length, test_length))
-# train_set = dataset
+train_set = dataset
 # }}}
 
 # {{{ data loading
@@ -179,6 +173,7 @@ crit = model_interface.loss
 optimizer = torch.optim.AdamW(
     list(encoder.parameters()) + list(projector.parameters()), lr=lr
 )
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min')
 log.info("Criterion: {}".format(crit))
 # }}}
 
@@ -226,7 +221,6 @@ for epoch in range(start_epoch, epochs):
         label = label.to(device)
         gt = gt.to(device)
 
-        __import__('ipdb').set_trace()
         enc = encoder(data)
         out = projector(enc)
 
@@ -260,13 +254,11 @@ for epoch in range(start_epoch, epochs):
             out = projector(enc)
             loss = crit(out, torch.squeeze(gt, dim=1))
 
-            # if kernel_size == 1:
-            #     loss = crit(regs[:, 0], torch.squeeze(gt[:, 0], dim=-1)
-            #                 ) + crit(regs[:, 1], torch.squeeze(gt[:, 1], dim=-1))
-            # else:
-            #     loss = crit(regs[:, 0], torch.squeeze(gt[:, 0], dim=1)
-            #                 ) + crit(regs[:, 1], torch.squeeze(gt[:, 1], dim=1))
-            out = inv_transform(out[-1]).to("cpu")
+            # extract last item from hourglass stack
+            if model_type in [ModelType.HourGlass, ModelType.HourGlassSqueeze]:
+                out = out[-1]
+
+            out = inv_transform(out).to("cpu")
             gt = inv_transform(gt).to("cpu")
             pos0 = torch.cat((pos0, out.view(-1, 2)))
             pos1 = torch.cat((pos1, gt.view(-1, 2)))
@@ -291,6 +283,7 @@ for epoch in range(start_epoch, epochs):
             plt.close(fig)
         # }}}
 
+        scheduler.step(epoch_val_loss)
         tepoch.set_postfix_str(
             "train={:.4f}, val={:.4f}".format(epoch_loss, epoch_val_loss)
         )

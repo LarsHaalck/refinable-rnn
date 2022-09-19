@@ -1,7 +1,6 @@
-from tod.model.base import BaseNetwork, BaseEncoder, BaseEmbedding
+from tod.model.base import BaseNetwork
 import torch
 from torch import nn
-from typing import Optional
 
 
 class ProjectorReg(BaseNetwork):
