@@ -1,5 +1,5 @@
 # model
-from tod.model.definition import ModelInterface
+from tod.model.definition import ModelInterface, load_model_config
 from tod.model.type import ModelType, ModelMode
 # data
 from tod.io import VideoDataset, get_folders_from_fold_file, InputType
@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 import pathlib
 import sys
+import argparse
 
 device = getDevice()
 
@@ -35,7 +36,7 @@ prefetch_factor = 2
 # training settings
 ########################################################
 # {{{ train params
-batch_size = 2
+batch_size = 12
 lr = 1e-4
 epochs = 5000
 patience = 100
@@ -43,6 +44,30 @@ crop = 1024
 kernel_size, kernel_sigma = 31, 3.
 input_type = InputType.ImagesUnaries
 model_type = ModelType.HourGlassSqueeze
+# }}}
+
+# {{{ argparse
+parser = argparse.ArgumentParser(description='Some desc')
+parser.add_argument(
+    '-i',
+    '--input',
+    required=True,
+    type=int,
+    choices=range(0, 3),
+    help='0: Unaries, 1: Images, 2: ImagesUnaries'
+)
+parser.add_argument(
+    '-t',
+    '--type',
+    required=True,
+    type=int,
+    choices=range(0, 4),
+    help='0: ResnetReg, 1: ResnetClass, 2: HGS, 3: HG'
+)
+
+args = parser.parse_args()
+input_type = InputType(args.input)
+model_type = ModelType(args.type)
 # }}}
 
 # {{{ load/dave
@@ -157,7 +182,7 @@ log.info("Test size {} ({} batches)".format(len(test_set), len(test_loader)))
 ########################################################
 # checkpoint loading
 ########################################################
-# checkpoint, model_config = load_model_config(load_path)
+checkpoint = load_model_config(load_path)
 
 ########################################################
 # model and optimizer
@@ -182,15 +207,17 @@ log.info("Criterion: {}".format(crit))
 ########################################################
 # {{{ model, optimizer loadint
 start_epoch = 0
-# if checkpoint is not None:
-#     log.info("Loading model from checkpoint")
-#     model.load_state_dict(checkpoint['model_state_dict'])
-#     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-#     start_epoch = checkpoint["epoch"]
+if checkpoint is not None:
+    log.info("Loading model from checkpoint")
+    encoder.load_state_dict(checkpoint['encoder_state_dict'])
+    projector.load_state_dict(checkpoint['projector_state_dict'])
+    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    start_epoch = checkpoint["epoch"]
 
-# optimizer.defaults["lr"] = lr
-# for g in optimizer.param_groups:
-#     g['lr'] = lr
+# reset lr to supplied value
+optimizer.defaults["lr"] = lr
+for g in optimizer.param_groups:
+    g['lr'] = lr
 log.info("Optimizer: {}".format(optimizer))
 # }}}
 
@@ -276,11 +303,11 @@ for epoch in range(start_epoch, epochs):
                 plotted = True
 
         # {{{ plot points
-        if epoch % 1 == 0:
-            fig = plt.figure(figsize=(20, 10))
-            plot_points(net=pos0, gt=pos1, show=False)
-            plt.savefig(store_path / ("points_{:04d}.jpg").format(epoch))
-            plt.close(fig)
+        # if epoch % 1 == 0:
+        #     fig = plt.figure(figsize=(20, 10))
+        #     plot_points(net=pos0, gt=pos1, show=False)
+        #     plt.savefig(store_path / ("points_{:04d}.jpg").format(epoch))
+        #     plt.close(fig)
         # }}}
 
         scheduler.step(epoch_val_loss)

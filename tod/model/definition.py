@@ -4,6 +4,7 @@ from tod.model.encoder import get_encoder
 from tod.model.embedding import GapEmbedding, Conv1dReshape
 from tod.model.projector import ProjectorReg, Projector2dx4, Projector2dx8, Projector2x1d
 from tod.model.type import ModelType, ModelMode
+import tod.utils.logger as logger
 
 from tod.transforms.video_transforms import \
     TransformGt, InverseTransformGt, \
@@ -13,6 +14,22 @@ from tod.transforms.video_transforms import \
 import torch
 from torch import nn
 from tod.utils.misc import _neg_loss2d, _neg_loss2x1d
+import pathlib
+import sys
+
+log = logger.getLogger("Definition")
+
+
+def load_model_config(load_path: str, map_location=None):
+    checkpoint = None
+    if len(load_path) > 0:
+        if pathlib.Path(load_path).exists():
+            log.info("Loading checkpoint from {}".format(load_path))
+            checkpoint = torch.load(load_path, map_location=map_location)
+        else:
+            log.warn("Loading path {} does not exist".format(load_path))
+            sys.exit(-1)
+    return checkpoint
 
 
 class ModelInterface():
