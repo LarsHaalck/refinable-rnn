@@ -31,9 +31,13 @@ class InverseTransformGt(nn.Module):
     def __init__(self, image_shape):
         super().__init__()
         self.shape = np.array(pair(image_shape))
+        self.shape_tensor = torch.tensor(self.shape[-2:][::-1].copy())
 
     def forward(self, data):
-        data = (data + 1) / 2 * self.shape[-2:][::-1]
+        if isinstance(data, torch.Tensor):
+            data = (data + 1) / 2 * self.shape_tensor.to(data.device)
+        else:
+            data = (data + 1) / 2 * self.shape[-2:][::-1]
         return data
 
     def __repr__(self):
