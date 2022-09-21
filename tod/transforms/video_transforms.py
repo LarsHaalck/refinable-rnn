@@ -18,7 +18,9 @@ class TransformGt(nn.Module):
         self.shape = np.array(pair(crop))
 
     def forward(self, data):
-        data[-1] = (2 * (data[-1] / self.shape[::-1]) - 1).astype(np.float32)
+        data[-1] = torch.tensor(
+            (2 * (data[-1] / self.shape[::-1]) - 1).astype(np.float32)
+        )
         return data
 
     def __repr__(self):

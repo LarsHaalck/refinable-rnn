@@ -1,9 +1,12 @@
+from tod.model.base import PseudoNetwork
 from tod.io.input_type import InputType
 from tod.utils.misc import pair
 from tod.model.encoder import get_encoder
 from tod.model.embedding import GapEmbedding, Conv1dReshape
-from tod.model.projector import ProjectorReg, Projector2dx4, Projector2dx8, Projector2x1d
-from tod.model.type import ModelType, ModelMode
+from tod.model.projector import ProjectorReg, Projector2dx4, Projector2dx8, \
+        Projector2x1d, Reprojector
+from tod.model.recurrent import RecurrentNet
+from tod.model.type import ModelType
 import tod.utils.logger as logger
 
 from tod.transforms.video_transforms import \
@@ -32,11 +35,19 @@ def load_model_config(load_path: str, map_location=None):
     return checkpoint
 
 
+# shared (fixed) -> lstm -> projector (loaded + refined)
 class ModelInterface():
 
     def __init__(
-        self, *, type: ModelType, input_type: InputType, crop, kernel_size: int,
-        kernel_sigma: float, freeze_encoder: bool, model_mode: ModelMode
+        self,
+        *,
+        type: ModelType,
+        input_type: InputType,
+        crop,
+        kernel_size: int,
+        kernel_sigma: float,
+        freeze_encoder: bool,
+        hg_across_spatial=True
     ):
         channels = None
         if input_type == InputType.Unaries:
@@ -57,7 +68,7 @@ class ModelInterface():
             type=type,
             pretrained=True
         )
-        hidden_dim = encoder.get_hidden_dim()
+        encoder_dim = encoder.get_hidden_dim()
 
         transform = None
         inv_transform = None
@@ -65,25 +76,40 @@ class ModelInterface():
         loss = None
         embedding = None
 
+        hidden_dim = 1024
         if self.type in [ModelType.ResnetReg, ModelType.ResnetClass]:
-            embedding = GapEmbedding(encoder_dim=hidden_dim, feature_dim=1024)
+            embedding = GapEmbedding(encoder_dim=encoder_dim, feature_dim=hidden_dim)
+            self.embedding = PseudoNetwork()
+            self.reprojector = PseudoNetwork()
         else:
-            # embedding = GapEmbedding(encoder_dim=hidden_dim, feature_dim=256)
-            embedding = Conv1dReshape(encoder_dim=hidden_dim, feature_dim=1024)
 
-        self.embedding = embedding
+            if hg_across_spatial:
+                self.embedding = Conv1dReshape(
+                    encoder_dim=encoder_dim, feature_dim=hidden_dim
+                )
+                self.reprojector = Reprojector(
+                    src_dim=hidden_dim, tgt_dim=[encoder_dim[0], 1, 1]
+                )
+            else:
+                hidden_dim = 256
+                self.embedding = GapEmbedding(
+                    encoder_dim=hidden_dim, feature_dim=hidden_dim
+                )
+                self.reprojector = Reprojector(
+                    src_dim=hidden_dim, tgt_dim=[1, encoder_dim[1], encoder_dim[2]]
+                )
 
         if self.type == ModelType.ResnetReg:
             transform = TransformGt(crop)
             inv_transform = InverseTransformGt(crop)
-            projector = ProjectorReg(hidden_dim=1024)
+            projector = ProjectorReg(hidden_dim=hidden_dim)
             loss = torch.nn.MSELoss()
         elif self.type == ModelType.ResnetClass:
             transform = TransformGtClassification2x1d(
                 crop, kernel_size=kernel_size, kernel_sigma=kernel_sigma
             )
             inv_transform = InverseTransformGtClassification2x1d(crop)
-            projector = Projector2x1d(hidden_dim=1024)
+            projector = Projector2x1d(hidden_dim=hidden_dim)
             loss = _neg_loss2x1d
         elif self.type == ModelType.HourGlass:
             transform = TransformGtClassification2d(
@@ -107,22 +133,19 @@ class ModelInterface():
 
         # for resnet types the embedding is part of the encoder
         if self.type in [ModelType.ResnetClass, ModelType.ResnetReg]:
+            if freeze_encoder:
+                for param in embedding.parameters():
+                    param.requires_grad = False
+                embedding.eval()
             self.encoder = nn.Sequential(encoder, embedding)
         else:
             self.encoder = encoder
 
-        # resnet types:
-        # shared: data -> encoder -> embedding -> hidden
-        # lstm: hidden -> lstm -> add on hidden
-        # projector: hidden -> output
-
-        # hg types:
-        # shared: data -> encoder -> hidden
-        # lstm: hidden -> embedding -> lstm -> add on hidden
-        # projector: hidden -> output
-
-        # single:
-        # shared -> projector
-
-        # recurrent
-        # shared (fixed) -> lstm -> projector (loaded + refined)
+        self.recurrent = RecurrentNet(
+            encoder=self.encoder,
+            embedding=self.embedding,
+            reprojector=self.reprojector,
+            projector=self.projector,
+            hidden_dim=hidden_dim,
+            model_type=self.type
+        )

@@ -9,7 +9,6 @@ def _get_linear(ft_in, ft_out):
         return nn.Linear(ft_in, ft_out)
     return nn.Identity()
 
-
 class GapEmbedding(BaseEmbedding):
 
     def __init__(self, *, encoder_dim, feature_dim):
@@ -49,6 +48,7 @@ class Conv1dReshape(BaseEmbedding):
         self.embedding = nn.Sequential(
             nn.Conv2d(256, 1, (1, 1)),
             nn.ReLU(inplace=True),
+            nn.Flatten(),
             nn.Linear(encoder_dim[1] * encoder_dim[2], feature_dim),
         )
 

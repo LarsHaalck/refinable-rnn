@@ -76,8 +76,6 @@ class Encoder(BaseEncoder):
         return self.hidden_dim
 
     def forward(self, data) -> Tensor:
-        b, t, c, h, w = data.shape
-        data = data.view(b*t, c, h, w)
         return self.encoder(data)
 
     def __repr__(self) -> str:

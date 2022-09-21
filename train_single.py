@@ -6,7 +6,7 @@ from tod.io import VideoDataset, get_folders_from_fold_file, InputType
 # utils
 import tod.utils.logger as logger
 from tod.utils.device import getDevice
-from tod.utils.vis import plot_points, plot_loss, show_single_item
+from tod.utils.vis import plot_loss, show_single_item
 from tod.transforms import RandomDrop, RandomRotate
 # misc
 import torch
@@ -90,7 +90,6 @@ model_interface = ModelInterface(
     freeze_encoder=False,
     model_mode=ModelMode.Single
 )
-
 # }}}
 
 # create logging dir and file
@@ -98,7 +97,7 @@ store_path = pathlib.Path(store_path)
 store_path.mkdir(exist_ok=False)
 logger.LOG_LEVEL = logger.INFO
 logger.LOG_FILE = store_path / "log.txt"
-log = logger.getLogger("Train")
+log = logger.getLogger("Train - Single")
 
 ########################################################
 # datasets
@@ -107,7 +106,7 @@ log = logger.getLogger("Train")
 # {{{ data transforms and folders
 log.info("Training with device: {}".format(device))
 length = 1
-transform = nn.Sequential(
+data_transform = nn.Sequential(
     # RandomNoise(p=1, mean=0, sigma=0.02, unary_only=True),
     RandomDrop(p_drop=0.2, p_unary=0.5),
     RandomRotate(vert_only=True),
@@ -130,7 +129,7 @@ dataset = VideoDataset(
         "video_length": length,
         "disjoint": False
     },
-    transform=transform,
+    transform=data_transform,
 )
 
 test_set = VideoDataset(
@@ -191,7 +190,7 @@ checkpoint = load_model_config(load_path)
 encoder = model_interface.encoder.to(device)
 projector = model_interface.projector.to(device)
 
-stats = summary(encoder, (1, 1, dataset.num_channels(), crop, crop), verbose=0)
+stats = summary(encoder, (1, dataset.num_channels(), crop, crop), verbose=0)
 log.info(str(stats))
 
 crit = model_interface.loss
@@ -248,7 +247,7 @@ for epoch in range(start_epoch, epochs):
         label = label.to(device)
         gt = gt.to(device)
 
-        enc = encoder(data)
+        enc = encoder(data.squeeze(1))
         out = projector(enc)
 
         loss = crit(out, torch.squeeze(gt, dim=1))
@@ -277,7 +276,7 @@ for epoch in range(start_epoch, epochs):
             label = label.to(device)
             gt = gt.to(device)
 
-            enc = encoder(data)
+            enc = encoder(data.squeeze(1))
             out = projector(enc)
             loss = crit(out, torch.squeeze(gt, dim=1))
 

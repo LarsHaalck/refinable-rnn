@@ -49,3 +49,13 @@ class BaseEmbedding(BaseNetwork, ABC):
     @abstractmethod
     def get_vec_dim(self) -> int:
         pass
+
+
+class PseudoNetwork(nn.Module):
+
+    def __init__(self):
+        super().__init__()
+        pass
+
+    def forward(self, data):
+        return data
