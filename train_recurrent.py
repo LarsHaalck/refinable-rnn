@@ -71,8 +71,8 @@ prefetch_factor = 4
 # training settings
 ########################################################
 # {{{ params
-batch_size = 4  # hg types
-batch_size = 16
+# batch_size = 4  # hg types
+# batch_size = 16
 lr = 1e-5
 epochs = 5000
 patience = 100
@@ -115,6 +115,12 @@ store_path = (
 # empty load_path means "do not load anything", None will fail
 load_path = ""
 load_path_enc = "/data/ant-ml-res/" + paths[input_type][model_type] + "/model.pt"
+
+batch_size = 0
+if model_type in [ModelType.ResnetClass, ModelType.ResnetReg]:
+    batch_size = 4
+else:
+    batch_size = 16
 # }}}
 
 # {{{ model
