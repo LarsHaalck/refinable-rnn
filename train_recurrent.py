@@ -19,6 +19,32 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 import pathlib
 import sys
+import argparse
+
+paths = {
+    InputType.Images: {
+        ModelType.HourGlassSqueeze:
+        "single_InputType.Images_ModelType.HourGlassSqueeze_C1024_G31_S3.0_LR0.0001-2022-09-19_17:27:28",
+        ModelType.ResnetClass:
+        "single_InputType.Images_ModelType.ResnetClass_C1024_G31_S3.0_LR0.0001-2022-09-19_17:28:32",
+    },
+    InputType.ImagesUnaries: {
+        ModelType.HourGlass:
+        "single_InputType.ImagesUnaries_ModelType.HourGlass_C1024_G31_S3.0_LR0.0001-2022-09-20_10:05:46",
+        ModelType.HourGlassSqueeze:
+        "single_InputType.ImagesUnaries_ModelType.HourGlassSqueeze_C1024_G31_S3.0_LR0.0001-2022-09-19_17:28:32",
+        ModelType.ResnetClass:
+        "single_InputType.ImagesUnaries_ModelType.ResnetClass_C1024_G31_S3.0_LR0.0001-2022-09-19_17:28:33",
+        ModelType.ResnetReg:
+        "single_InputType.ImagesUnaries_ModelType.ResnetReg_C1024_G31_S3.0_LR0.0001-2022-09-20_10:14:47",
+    },
+    InputType.Unaries: {
+        ModelType.HourGlassSqueeze:
+        "single_InputType.Unaries_ModelType.HourGlassSqueeze_C1024_G31_S3.0_LR0.0001-2022-09-19_17:28:32",
+        ModelType.ResnetClass:
+        "single_InputType.Unaries_ModelType.ResnetClass_C1024_G31_S3.0_LR0.0001-2022-09-19_17:28:32",
+    }
+}
 
 device = getDevice()
 
@@ -45,7 +71,8 @@ prefetch_factor = 4
 # training settings
 ########################################################
 # {{{ params
-batch_size = 12
+batch_size = 4  # hg types
+batch_size = 16
 lr = 1e-5
 epochs = 5000
 patience = 100
@@ -54,7 +81,31 @@ kernel_size, kernel_sigma = 31, 3.
 input_type = InputType.ImagesUnaries
 model_type = ModelType.HourGlassSqueeze
 
-# {{{ load/dave
+# {{{ argparse
+parser = argparse.ArgumentParser(description='Some desc')
+parser.add_argument(
+    '-i',
+    '--input',
+    required=True,
+    type=int,
+    choices=range(0, 3),
+    help='0: Unaries, 1: Images, 2: ImagesUnaries'
+)
+parser.add_argument(
+    '-t',
+    '--type',
+    required=True,
+    type=int,
+    choices=range(0, 4),
+    help='0: ResnetReg, 1: ResnetClass, 2: HGS, 3: HG'
+)
+
+args = parser.parse_args()
+input_type = InputType(args.input)
+model_type = ModelType(args.type)
+# }}}
+
+# {{ load/save
 store_path = (
     "/data/ant-ml-res/recurrent_{}_{}_C{}_G{}_S{}_LR{}-".
     format(input_type, model_type, crop, kernel_size, kernel_sigma, lr) +
@@ -63,7 +114,7 @@ store_path = (
 
 # empty load_path means "do not load anything", None will fail
 load_path = ""
-load_path_enc = None
+load_path_enc = "/data/ant-ml-res/" + paths[input_type][model_type] + "/model.pt"
 # }}}
 
 # {{{ model
@@ -101,9 +152,7 @@ transform = model_interface.transform
 inv_transform = model_interface.inv_transform
 
 train_datasets, test_datasets = get_folders_from_fold_file(
-    csv_file="/data/ant-ml/dataset_folds.csv",
-    path_prefix="/data/ant-ml",
-    test_fold=2
+    csv_file="/data/ant-ml/dataset_folds.csv", path_prefix="/data/ant-ml", test_fold=2
 )
 log.info("Train sets: {}".format(train_datasets))
 log.info("Test sets: {}".format(test_datasets))
@@ -174,7 +223,6 @@ checkpoint = load_model_config(load_path)
 ########################################################
 # {{{ model, optim
 recurrent = model_interface.recurrent.to(device)
-
 
 crit = model_interface.loss
 optimizer = torch.optim.AdamW(recurrent.parameters(), lr=lr)
@@ -266,7 +314,7 @@ for epoch in range(start_epoch, epochs):
             regs = collect_single(
                 data=data,
                 gt=gt[:, 0, :],
-                )
+            )
 
             gts = gt.shape
             # mimic shape and type of dataloader transform
