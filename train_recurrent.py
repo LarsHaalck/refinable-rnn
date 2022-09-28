@@ -118,9 +118,9 @@ load_path_enc = "/data/ant-ml-res/" + paths[input_type][model_type] + "/model.pt
 
 batch_size = 0
 if model_type in [ModelType.ResnetClass, ModelType.ResnetReg]:
-    batch_size = 4
-else:
     batch_size = 16
+else:
+    batch_size = 4
 # }}}
 
 # {{{ model

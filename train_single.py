@@ -70,7 +70,7 @@ input_type = InputType(args.input)
 model_type = ModelType(args.type)
 # }}}
 
-# {{{ load/dave
+# {{{ load/save
 store_path = (
     "/data/ant-ml-res/single_{}_{}_C{}_G{}_S{}_LR{}-".
     format(input_type, model_type, crop, kernel_size, kernel_sigma, lr) +

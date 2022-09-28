@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 from einops import rearrange
 import numpy as np
+from typing import Optional
 
 
 ####################################################
@@ -181,7 +182,7 @@ class ReorderHorizontal(nn.Module):
 # None to drop both everytime
 class RandomDrop(nn.Module):
 
-    def __init__(self, p_drop=0.1, p_unary=0.5):
+    def __init__(self, p_drop=0.1, p_unary: Optional[float] = 0.5):
         super().__init__()
         self.p_drop = p_drop
         self.p_unary = p_unary
