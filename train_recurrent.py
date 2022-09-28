@@ -328,7 +328,7 @@ for epoch in range(start_epoch, epochs):
             gt_trans = gt_trans.view(gts[0], gts[1], *gt_trans.shape[1:])
             loss = crit(regs, gt_trans)
 
-            regs = inv_transform(regs).to("cpu").view(batch_size, length, 2)
+            regs = inv_transform(regs).to("cpu").view(batch_size, gts[1], 2)
             gt = gt.to("cpu")
 
             pos0 = torch.cat((pos0, regs.view(-1, 2)))
