@@ -138,9 +138,16 @@ class InverseTransformGtClassification2d(nn.Module):
         dim = data.dim()
         if dim == 4:
             b, t, _, _ = data.shape
+        else:
+            b = data.shape[0]
+            t = 1
 
         # argmax across last two dimensions
         data = (data == torch.amax(data, dim=(-2, -1), keepdims=True)).nonzero()
+        _, idx = np.unique(
+            (data[:, 0] * t + data[:, 1]).to("cpu").numpy(), return_index=True
+        )
+        data = data[idx]
         # remove batch and temp indices
         if dim == 4:
             data = rearrange(data[:, -2:], "(b t) i -> b t i", b=b, t=t)

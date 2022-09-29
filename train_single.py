@@ -165,7 +165,7 @@ train_loader = DataLoader(
 test_loader = DataLoader(
     test_set,
     batch_size=batch_size,
-    shuffle=True,
+    shuffle=False,
     num_workers=num_workers,
     prefetch_factor=prefetch_factor
 )
