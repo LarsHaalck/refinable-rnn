@@ -10,10 +10,12 @@ import torch
 from torch.utils.data import DataLoader
 from torchinfo import summary
 from torch.nn.functional import softmax
+from torch import nn
 
 import matplotlib.pyplot as plt
 import re
 from einops import reduce
+from einops.layers.torch import Rearrange
 from tqdm import tqdm
 
 
@@ -37,7 +39,7 @@ prefetch_factor = 2
 # training settings
 ########################################################
 # {{{ params
-batch_size = 4
+batch_size = 1
 crop = 1024
 kernel_size, kernel_sigma = 31, 1.
 logger.LOG_LEVEL = logger.INFO
@@ -47,6 +49,8 @@ model_type = ModelType.ResnetClass
 
 # empty load_path means "do not load anything"
 load_path, key = get_load_path_from_types(input_type, model_type)
+# load_path = "/data/ant-ml-res/single_InputType.ImagesUnaries_ModelType.HourGlassSqueeze_C1024_G31_S3.0_LR0.0001-2022-09-30_06:56:51/model.pt"
+key = "yeah"
 # }}}
 
 # {{{ model
@@ -163,63 +167,69 @@ with torch.no_grad():
         else:
             regs_point = [o.to("cpu") for o in inv_transform(out)]
 
-        # __import__('ipdb').set_trace()
-        loss = crit(regs_point[-1].to(float), torch.squeeze(gt, dim=1).to(float))
-        loss = reduce(loss, "n d -> n", "sum", d=2).sqrt()
-        [f.write(str(it.item()) + "\n") for it in loss]
-        f.flush()
+        # loss = crit(regs_point[-1].to(float), torch.squeeze(gt, dim=1).to(float))
+        # loss = reduce(loss, "n d -> n", "sum", d=2).sqrt()
+        # [f.write(str(it.item()) + "\n") for it in loss]
+        # f.flush()
 
-        # if model_type == ModelType.ResnetClass:
-        #     regs_img = torch.outer(softmax(out[0, 1], 0), softmax(out[0, 0], 0)).to("cpu")
-        #     regs_img /= regs_img.max()
-        #     regs_img = [regs_img]
-        # elif model_type == ModelType.ResnetReg:
-        #     regs_img = [torch.ones(crop, crop, 1) * 255]
-        # else:
-        #     regs_img = [
-        #         ((o - o.min()) / (o.max() - o.min())).to("cpu").squeeze() for o in out
-        #     ]
+        temp = 5
+        if model_type == ModelType.ResnetClass:
+            regs_img = torch.outer(
+                softmax(out[0, 1], 0) / temp,
+                softmax(out[0, 0], 0) / temp
+            ).to("cpu")
+            regs_img /= regs_img.max()
+            regs_img = [regs_img]
+        elif model_type == ModelType.ResnetReg:
+            regs_img = [torch.ones(crop, crop, 1)]
+        else:
+            sm = nn.Sequential(
+                Rearrange("b h w -> b (h w)"),
+                nn.Softmax(dim=-1),
+                Rearrange("b (h w) -> b h w", h=crop, w=crop),
+            )
+            regs_img = [sm(o / temp).to("cpu").squeeze() for o in out]
+            regs_img = [o / o.max() for o in regs_img]
 
-        # fig2, ax2 = plt.subplots(len(regs_point), 4)
-        # data = data.to("cpu")
+        fig2, ax2 = plt.subplots(len(regs_point), 4)
+        data = data.to("cpu")
 
-        # for i, img in enumerate(regs_img):
-        #     pt = regs_point[i]
-        #     if input_type in [InputType.Unaries, InputType.ImagesUnaries]:
-        #         un_m = data[0, 0, [-1]].permute(1, 2, 0)
-        #     else:
-        #         un_m = torch.ones(*data[0, 0].shape[1:], 1) * 255
+        for i, img in enumerate(regs_img):
+            pt = regs_point[i]
+            if input_type in [InputType.Unaries, InputType.ImagesUnaries]:
+                un_m = data[0, 0, [-1]].permute(1, 2, 0)
+            else:
+                un_m = torch.ones(*data[0, 0].shape[1:], 1)
 
-        #     if input_type in [InputType.Images, InputType.ImagesUnaries]:
-        #         im_m = data[0, 0, :3].permute(1, 2, 0)
-        #     else:
-        #         im_m = torch.ones(*data[0, 0].shape[1:], 1) * 255
+            if input_type in [InputType.Images, InputType.ImagesUnaries]:
+                im_m = data[0, 0, :3].permute(1, 2, 0)
+            else:
+                im_m = torch.ones(*data[0, 0].shape[1:], 1)
 
-        #     cax = ax2[i, 0] if len(regs_point) > 1 else ax2[0]
-        #     cax.imshow(img.squeeze(0))
-        #     cax.scatter(gt[0, 0], gt[0, 1], color='red', marker='x', label="gt")
-        #     cax.scatter(pt[0, 0], pt[0, 1], color='yellow', marker='x', label="pred")
-        #     cax.set_title("Heatmap")
+            cax = ax2[i, 0] if len(regs_point) > 1 else ax2[0]
+            cax.imshow(img.squeeze(0), cmap=plt.get_cmap("YlOrBr"))
+            cax.scatter(gt[0, 0], gt[0, 1], color='C9', marker='o', label="gt")
+            cax.scatter(pt[0, 0], pt[0, 1], color='C3', marker='x', label="pred")
+            cax.set_title("Heatmap")
 
-        #     cax = ax2[i, 1] if len(regs_point) > 1 else ax2[1]
-        #     cax.imshow(im_m)
-        #     cax.scatter(gt[0, 0], gt[0, 1], color='red', marker='x', label="gt")
-        #     cax.scatter(pt[0, 0], pt[0, 1], color='yellow', marker='x', label="pred")
-        #     cax.set_title("Raw image (if supplied)")
+            cax = ax2[i, 1] if len(regs_point) > 1 else ax2[1]
+            cax.imshow(im_m)
+            cax.scatter(gt[0, 0], gt[0, 1], color='C9', marker='o', label="gt")
+            cax.scatter(pt[0, 0], pt[0, 1], color='C3', marker='x', label="pred")
+            cax.set_title("Raw image (if given)")
 
-        #     cax = ax2[i, 2] if len(regs_point) > 1 else ax2[2]
-        #     cax.imshow(un_m)
-        #     cax.scatter(gt[0, 0], gt[0, 1], color='red', marker='x', label="gt")
-        #     cax.scatter(pt[0, 0], pt[0, 1], color='yellow', marker='x', label="pred")
-        #     cax.set_title("Raw unary (if supplied)")
+            cax = ax2[i, 2] if len(regs_point) > 1 else ax2[2]
+            cax.imshow(un_m, cmap=plt.get_cmap("binary") if un_m.mean() == 1 else plt.get_cmap("plasma"))
+            cax.scatter(gt[0, 0], gt[0, 1], color='C9', marker='o', label="gt")
+            cax.scatter(pt[0, 0], pt[0, 1], color='C3', marker='x', label="pred")
+            cax.set_title("Raw unary (if given)")
 
-        #     img_m = ((img - torch.min(img)) /
-        #              (torch.max(img) - torch.min(img))).unsqueeze(-1)
-        #     img_m = (im_m * img_m + un_m * img_m)
+            img_m = img.unsqueeze(-1)
+            img_m = (im_m * img_m + un_m * img_m)
 
-        #     cax = ax2[i, 3] if len(regs_point) > 1 else ax2[3]
-        #     cax.imshow(img_m)
-        #     cax.scatter(gt[0, 0], gt[0, 1], color='red', marker='x', label="gt")
-        #     cax.scatter(pt[0, 0], pt[0, 1], color='yellow', marker='x', label="pred")
-        #     cax.set_title("Raw unary (if supplied)")
-        # plt.show()
+            cax = ax2[i, 3] if len(regs_point) > 1 else ax2[3]
+            cax.imshow(img_m)
+            cax.scatter(gt[0, 0], gt[0, 1], color='C9', marker='o', label="gt")
+            cax.scatter(pt[0, 0], pt[0, 1], color='C3', marker='x', label="pred")
+            cax.set_title("Raw unary (if given)")
+        plt.show()
