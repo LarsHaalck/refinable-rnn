@@ -229,6 +229,7 @@ val_losses = []
 # best val loss and id
 best_val_loss = np.inf
 best_epoch = 0
+loss = torch.Tensor(0)
 epochs += start_epoch
 
 for epoch in range(start_epoch, epochs):

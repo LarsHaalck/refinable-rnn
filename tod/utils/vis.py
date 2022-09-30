@@ -121,6 +121,7 @@ def plot_pred(preds):
 def seperate_data(item):
     imgs = None
     unaries = None
+    gt = None
     if len(item) == 2:
         if item[0].ndim == 4:
             if item[0].shape[1] == 3:

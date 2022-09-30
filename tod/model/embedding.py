@@ -9,6 +9,7 @@ def _get_linear(ft_in, ft_out):
         return nn.Linear(ft_in, ft_out)
     return nn.Identity()
 
+
 class GapEmbedding(BaseEmbedding):
 
     def __init__(self, *, encoder_dim, feature_dim):

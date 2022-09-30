@@ -24,25 +24,25 @@ import argparse
 paths = {
     InputType.Images: {
         ModelType.HourGlassSqueeze:
-        "single_InputType.Images_ModelType.HourGlassSqueeze_C1024_G31_S3.0_LR0.0001-2022-09-19_17:27:28",
+        "single_InputType.Images_ModelType.HourGlassSqueeze_C1024_G31_S3.0_LR0.0001-2022-09-19_17:27:28",  # noqa
         ModelType.ResnetClass:
-        "single_InputType.Images_ModelType.ResnetClass_C1024_G31_S3.0_LR0.0001-2022-09-19_17:28:32",
+        "single_InputType.Images_ModelType.ResnetClass_C1024_G31_S3.0_LR0.0001-2022-09-19_17:28:32",  # noqa
     },
     InputType.ImagesUnaries: {
         ModelType.HourGlass:
-        "single_InputType.ImagesUnaries_ModelType.HourGlass_C1024_G31_S3.0_LR0.0001-2022-09-20_10:05:46",
+        "single_InputType.ImagesUnaries_ModelType.HourGlass_C1024_G31_S3.0_LR0.0001-2022-09-20_10:05:46",  # noqa
         ModelType.HourGlassSqueeze:
-        "single_InputType.ImagesUnaries_ModelType.HourGlassSqueeze_C1024_G31_S3.0_LR0.0001-2022-09-19_17:28:32",
+        "single_InputType.ImagesUnaries_ModelType.HourGlassSqueeze_C1024_G31_S3.0_LR0.0001-2022-09-19_17:28:32",  # noqa
         ModelType.ResnetClass:
-        "single_InputType.ImagesUnaries_ModelType.ResnetClass_C1024_G31_S3.0_LR0.0001-2022-09-19_17:28:33",
+        "single_InputType.ImagesUnaries_ModelType.ResnetClass_C1024_G31_S3.0_LR0.0001-2022-09-19_17:28:33",  # noqa
         ModelType.ResnetReg:
-        "single_InputType.ImagesUnaries_ModelType.ResnetReg_C1024_G31_S3.0_LR0.0001-2022-09-20_10:14:47",
+        "single_InputType.ImagesUnaries_ModelType.ResnetReg_C1024_G31_S3.0_LR0.0001-2022-09-20_10:14:47",  # noqa
     },
     InputType.Unaries: {
         ModelType.HourGlassSqueeze:
-        "single_InputType.Unaries_ModelType.HourGlassSqueeze_C1024_G31_S3.0_LR0.0001-2022-09-19_17:28:32",
+        "single_InputType.Unaries_ModelType.HourGlassSqueeze_C1024_G31_S3.0_LR0.0001-2022-09-19_17:28:32",  # noqa
         ModelType.ResnetClass:
-        "single_InputType.Unaries_ModelType.ResnetClass_C1024_G31_S3.0_LR0.0001-2022-09-19_17:28:32",
+        "single_InputType.Unaries_ModelType.ResnetClass_C1024_G31_S3.0_LR0.0001-2022-09-19_17:28:32",  # noqa
     }
 }
 

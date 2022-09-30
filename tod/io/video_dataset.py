@@ -14,10 +14,7 @@ import csv
 
 
 def get_folders_from_fold_file(
-    csv_file: str,
-    path_prefix: str,
-    test_fold: int,
-    ignore: Optional[List[int]] = None
+    csv_file: str, path_prefix, test_fold: int, ignore: Optional[List[int]] = None
 ):
     path_prefix = pathlib.Path(path_prefix)
     test_datasets = []
@@ -43,7 +40,9 @@ def get_folders_from_fold_file(
 
 class VideoDataset(torch.utils.data.Dataset):
 
-    def __init__(self, *, folders, config, transform=nn.Identity(), sampler=None):
+    def __init__(
+        self, *, folders, config, transform: nn.Module = nn.Identity(), sampler=None
+    ):
 
         default_config = {
             "input_type": InputType.ImagesUnaries,  # what input is used

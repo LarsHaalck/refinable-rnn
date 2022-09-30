@@ -70,11 +70,11 @@ class ModelInterface():
         )
         encoder_dim = encoder.get_hidden_dim()
 
-        transform = None
-        inv_transform = None
-        projector = None
-        loss = None
-        embedding = None
+        transform = nn.Identity()
+        inv_transform = nn.Identity()
+        projector = nn.Identity()
+        loss = nn.L1Loss()
+        embedding = nn.Identity()
 
         hidden_dim = 1024
         if self.type in [ModelType.ResnetReg, ModelType.ResnetClass]:
@@ -88,7 +88,7 @@ class ModelInterface():
                     encoder_dim=encoder_dim, feature_dim=hidden_dim
                 )
                 self.reprojector = Reprojector(
-                    src_dim=hidden_dim, tgt_dim=[encoder_dim[0], 1, 1]
+                    src_dim=hidden_dim, tgt_dim=[int(encoder_dim[0]), 1, 1]
                 )
             else:
                 hidden_dim = 256
@@ -96,7 +96,9 @@ class ModelInterface():
                     encoder_dim=hidden_dim, feature_dim=hidden_dim
                 )
                 self.reprojector = Reprojector(
-                    src_dim=hidden_dim, tgt_dim=[1, encoder_dim[1], encoder_dim[2]]
+                    src_dim=hidden_dim,
+                    tgt_dim=[1, int(encoder_dim[1]),
+                             int(encoder_dim[2])]
                 )
 
         if self.type == ModelType.ResnetReg:

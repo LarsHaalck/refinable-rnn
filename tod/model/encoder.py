@@ -22,7 +22,7 @@ def get_encoder(
         image_size=image_size,
         channels=channels,
         freeze=freeze,
-        type=type,
+        model_type=type,
         pretrained=pretrained
     )
 
@@ -34,20 +34,20 @@ class Encoder(BaseEncoder):
         *,
         image_size,
         channels=3,
-        type: ModelType,
+        model_type: ModelType,
         pretrained: bool = False,
         freeze: bool = False
     ):
         super().__init__()
         log = logger.getLogger("Encoder")
         self.image_height, self.image_width = pair(image_size)
-        self.type = type
+        self.model_type = model_type
         self.channels = channels
         self.freeze = freeze
         log.info(self)
 
         net = nn.Sequential()
-        if type in [ModelType.ResnetReg, ModelType.ResnetClass]:
+        if model_type in [ModelType.ResnetReg, ModelType.ResnetClass]:
             net = resnet50(pretrained=pretrained)
             net.conv1 = torch.nn.Conv2d(
                 channels, 64, (7, 7), (2, 2), padding=(7 // 2, 7 // 2)
@@ -55,9 +55,9 @@ class Encoder(BaseEncoder):
             layerlist = list(net.children())[:-2]
             net = torch.nn.Sequential(*layerlist)
 
-        if type == ModelType.HourGlass:
+        if model_type == ModelType.HourGlass:
             net = HourGlassNet(channels=channels, pretrained=pretrained)
-        elif type == ModelType.HourGlassSqueeze:
+        elif model_type == ModelType.HourGlassSqueeze:
             net = HourGlassSqueezeNet(channels=channels, pretrained=pretrained)
 
         # set requires_grad to false, and set mode to eval on freeze
@@ -82,4 +82,4 @@ class Encoder(BaseEncoder):
         return self.__class__.__name__ + \
                 '(image_size={}, channels={}, freeze={}, type={})'.format(
                         (self.image_height, self.image_width), self.channels,
-                        self.freeze, self.type)
+                        self.freeze, self.model_type)

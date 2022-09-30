@@ -1,7 +1,5 @@
 import numpy as np
 from abc import ABC
-import random
-from tod.utils.misc import bounding_box, pair
 
 
 class Sampler(ABC):

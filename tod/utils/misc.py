@@ -1,5 +1,6 @@
 import torch
 from torch.nn.functional import log_softmax
+from torch import Tensor
 
 
 def pair(t):
@@ -25,7 +26,7 @@ def bounding_box(data):
     return (data.min(axis=0), data.max(axis=0))
 
 
-def _neg_loss2x1d(pred, gt):
+def _neg_loss2x1d(pred, gt) -> Tensor:
     """
     Adapted from CornerNet code (https://github.com/princeton-vl/CornerNet)
     """
@@ -53,14 +54,14 @@ def _neg_loss2x1d(pred, gt):
     return -1. * (pos_loss + neg_loss) / num_pos
 
 
-def _neg_loss2d(preds, gt):
+def _neg_loss2d(preds, gt) -> Tensor:
     """
     Adapted from CornerNet code (https://github.com/princeton-vl/CornerNet)
     """
     if not isinstance(preds, list):
         preds = [preds]
 
-    loss = 0
+    loss = torch.Tensor(0)
     for pred in preds:
         shape = pred.shape
         pred_log = log_softmax(pred.view(shape[0], -1), dim=-1).view(*shape)
