@@ -9,7 +9,7 @@ import torchvision.transforms as transforms
 from PIL import Image
 import random
 import torch.nn as nn
-from typing import List
+from typing import List, Optional
 import csv
 
 
@@ -17,11 +17,14 @@ def get_folders_from_fold_file(
     csv_file: str,
     path_prefix: str,
     test_fold: int,
-    ignore: List[int] = [0]
+    ignore: Optional[List[int]] = None
 ):
     path_prefix = pathlib.Path(path_prefix)
     test_datasets = []
     train_datasets = []
+    if ignore is None:
+        ignore = [0]
+
     with open(csv_file) as f:
         csv_reader = csv.reader(f, delimiter=",")
 

@@ -1,30 +1,27 @@
 # model
-from tod.model.encoder import Type as EncType
-from tod.model.embedding import Type as EmbType
+from tod.model.definition import load_model_config, ModelType, ModelInterface
 # data
-from tod.io import VideoDataset, get_folders_from_fold_file, InputType
-from tod.transforms import TransformGt, TransformGtClassification2d, RandomRotate, RandomDrop, InverseTransformGtClassification2d
+from tod.io import VideoDataset, InputType
 # utils
 import tod.utils.logger as logger
 from tod.utils.device import getDevice
-from tod.utils.vis import plot_points, plot_loss, show_single_item
-from tod.utils.misc import _neg_loss2d
 # misc
 import torch
-import torch.nn as nn
 from torch.utils.data import DataLoader
 from torchinfo import summary
-from model_def import load_model_config, Type as ModelType, get_model_from_dataset
+from torch.nn.functional import softmax
 
-import numpy as np
-from tqdm import tqdm
 import matplotlib.pyplot as plt
-from datetime import datetime
-import pathlib
-import sys
+import re
+
+
+def get_load_path_from_types(input_type, model_type):
+    p1 = re.sub(r"InputType\.", "", str(input_type))
+    p2 = re.sub(r"ModelType\.", "", str(model_type))
+    return "/data/ant-ml-res/{}_{}/model.pt".format(p1, p2)
+
 
 device = getDevice()
-
 ########################################################
 # loader settings
 ########################################################
@@ -38,16 +35,26 @@ prefetch_factor = 2
 ########################################################
 # {{{ params
 batch_size = 1
-lr = 1e-4
-epochs = 5000
-patience = 100
 crop = 1024
 kernel_size, kernel_sigma = 31, 1.
-load_path = ""
 logger.LOG_LEVEL = logger.INFO
 log = logger.getLogger("Train")
 input_type = InputType.ImagesUnaries
 model_type = ModelType.HourGlassSqueeze
+
+# empty load_path means "do not load anything"
+load_path = get_load_path_from_types(input_type, model_type)
+# }}}
+
+# {{{ model
+model_interface = ModelInterface(
+    type=model_type,
+    input_type=input_type,
+    crop=crop,
+    kernel_size=kernel_size,
+    kernel_sigma=kernel_sigma,
+    freeze_encoder=False,
+)
 # }}}
 
 ########################################################
@@ -57,26 +64,19 @@ model_type = ModelType.HourGlassSqueeze
 # {{{ data transforms and folders
 log.info("Training with device: {}".format(device))
 length = 1
-transform = nn.Sequential(
-    # RandomNoise(p=1, mean=0, sigma=0.02, unary_only=True),
-    RandomDrop(p_drop=0.2, p_unary=0.5),
-    RandomRotate(vert_only=True),
-    TransformGtClassification2d(crop, kernel_size=kernel_size, kernel_sigma=kernel_sigma)
-)
-inv_transform = InverseTransformGtClassification2d(crop)
 
 test_set = VideoDataset(
-    folders="/data/ant-ml/Ant13R4",
+    folders=["/data/eval_tod/Ant4R8", "/data/eval_tod/Ant6ZVF"],
     config={
         "crop_size": crop,
-        "input_type": InputType.ImagesUnaries,
+        "input_type": input_type,
         "video_length": length,
         "disjoint": True
     },
-    transform=TransformGtClassification2d(
-        crop, kernel_size=kernel_size, kernel_sigma=kernel_sigma
-    )
+    transform=model_interface.transform
 )
+
+inv_transform = model_interface.inv_transform
 log.info("Test Dataset: {}".format(test_set))
 # }}}
 
@@ -103,27 +103,17 @@ test_loader = DataLoader(
 ########################################################
 # checkpoint loading
 ########################################################
-checkpoint, model_config = load_model_config(load_path)
+checkpoint = load_model_config(load_path)
 
 ########################################################
 # model and optimizer
 ########################################################
 # {{{ model, optim
-model_config = model_config or {
-    "type": ModelType.SingleNet,
-    "enc_type": EncType.Resnet50,
-    "enc_pretrained": True,
-    "emb_type": EmbType.Gap
-}
-
-model, _ = get_model_from_dataset(test_set, model_config)
-model = model.to(device)
-model.print_network(verbose=False)
-stats = summary(model.encoder, (1, test_set.num_channels(), crop, crop), verbose=0)
+encoder = model_interface.encoder.to(device)
+projector = model_interface.projector.to(device)
+stats = summary(encoder, (1, test_set.num_channels(), crop, crop), verbose=0)
 log.info(str(stats))
-# crit = torch.nn.MSELoss()
-# crit = torch.nn.CrossEntropyLoss()
-crit = _neg_loss2d
+crit = model_interface.loss
 log.info("Criterion: {}".format(crit))
 # }}}
 
@@ -134,85 +124,91 @@ log.info("Criterion: {}".format(crit))
 start_epoch = 0
 if checkpoint is not None:
     log.info("Loading model from checkpoint")
-    model.load_state_dict(checkpoint['model_state_dict'])
-    start_epoch = checkpoint["epoch"]
+    encoder.load_state_dict(checkpoint['encoder_state_dict'])
+    projector.load_state_dict(checkpoint['projector_state_dict'])
 # }}}
 
 ########################################################
-# training loop
+# loop
 ########################################################
-# {{{ train loop
-# best val loss and id
-best_val_loss = np.inf
-best_epoch = 0
-epochs += start_epoch
+# {{{ loop
+encoder.eval()
+projector.eval()
 
-for epoch in range(start_epoch, epochs):
-    epoch_loss = 0
-    epoch_accuracy = 0
+with torch.no_grad():
+    pos0 = torch.tensor([])
+    pos1 = torch.tensor([])
+    epoch_val_accuracy = 0
+    epoch_val_loss = 0
+    for data, label, gt in test_loader:
+        data = data.to(device)
+        label = label.to(device)
+        gt = gt.to(device)
 
-    # {{{ eval
-    with torch.no_grad():
-        model.eval()
-        pos0 = torch.tensor([])
-        pos1 = torch.tensor([])
-        epoch_val_accuracy = 0
-        epoch_val_loss = 0
-        for data, label, gt in test_loader:
-            data = data.to(device)
-            label = label.to(device)
-            gt = gt.to(device)
+        enc = encoder(data.squeeze(1))
+        out = projector(enc)
 
-            regs = model(data)
-            loss = crit(regs, torch.squeeze(gt, dim=1))
+        # __import__('ipdb').set_trace()
+        # loss = crit(out, torch.squeeze(gt, dim=1))
 
-            regs_point = inv_transform(regs[-1]).to("cpu")
-            gt = inv_transform(gt).to("cpu").view(-1, 2)
-            regs = regs[-1].to("cpu")
-            regs_img = regs[0]
-            # regs_img = torch.outer(regs[0, 1], regs[0, 0])
+        gt = inv_transform(gt).to("cpu").view(-1, 2)
 
-            fig2, ax2 = plt.subplots(1, 4)
-            data = data.to("cpu")
-            ax2[0].imshow(regs_img)
-            ax2[0].scatter(gt[0, 0], gt[0, 1], color='red', marker='x', label="gt")
-            ax2[0].scatter(
-                regs_point[0, 0],
-                regs_point[0, 1],
-                color='yellow',
-                marker='x',
-                label="pred"
-            )
-            ax2[1].imshow(data[0, 0, :3].permute(1, 2, 0))
-            ax2[1].scatter(gt[0, 0], gt[0, 1], color='red', marker='x', label="gt")
-            ax2[1].scatter(
-                regs_point[0, 0],
-                regs_point[0, 1],
-                color='yellow',
-                marker='x',
-                label="pred"
-            )
-            ax2[2].imshow(data[0, 0, -1])
-            ax2[2].scatter(gt[0, 0], gt[0, 1], color='red', marker='x', label="gt")
-            ax2[2].scatter(
-                regs_point[0, 0],
-                regs_point[0, 1],
-                color='yellow',
-                marker='x',
-                label="pred"
-            )
-            ax2[3].imshow(
-                data[0, 0, :3].permute(1, 2, 0) * (
-                    (regs_img - torch.min(regs_img)) /
-                    (torch.max(regs_img) - torch.min(regs_img))
-                ).unsqueeze(-1)
-            )
-            ax2[3].scatter(gt[0, 0], gt[0, 1], color='red', marker='x', label="gt")
-            ax2[3].scatter(
-                regs_point[0, 0],
-                regs_point[0, 1],
-                color='yellow',
-                marker='x',
-                label="pred"
-            )
-            plt.show()
+        if model_type == ModelType.ResnetClass:
+            regs_img = torch.outer(softmax(out[0, 1], 0), softmax(out[0, 0], 0)).to("cpu")
+            regs_img /= regs_img.max()
+            regs_img = [regs_img]
+            # regs_img = [(out[0, 1, None].T + out[0, 0, None]).to("cpu")]
+
+            regs_point = [inv_transform(out).to("cpu")]
+        elif model_type == ModelType.ResnetReg:
+            regs_img = [torch.ones(crop, crop, 1) * 255]
+            regs_point = [inv_transform(out).to("cpu")]
+        else:
+            regs_img = [
+                ((o - o.min()) / (o.max() - o.min())).to("cpu").squeeze() for o in out
+            ]
+            regs_point = [o.to("cpu") for o in inv_transform(out)]
+
+        fig2, ax2 = plt.subplots(len(regs_point), 4)
+        data = data.to("cpu")
+
+        for i, img in enumerate(regs_img):
+            pt = regs_point[i]
+            if input_type in [InputType.Unaries, InputType.ImagesUnaries]:
+                un_m = data[0, 0, [-1]].permute(1, 2, 0)
+            else:
+                un_m = torch.ones(*data[0, 0].shape[1:], 1) * 255
+
+            if input_type in [InputType.Images, InputType.ImagesUnaries]:
+                im_m = data[0, 0, :3].permute(1, 2, 0)
+            else:
+                im_m = torch.ones(*data[0, 0].shape[1:], 1) * 255
+
+            cax = ax2[i, 0] if len(regs_point) > 1 else ax2[0]
+            cax.imshow(img.squeeze(0))
+            cax.scatter(gt[0, 0], gt[0, 1], color='red', marker='x', label="gt")
+            cax.scatter(pt[0, 0], pt[0, 1], color='yellow', marker='x', label="pred")
+            cax.set_title("Heatmap")
+
+            cax = ax2[i, 1] if len(regs_point) > 1 else ax2[1]
+            cax.imshow(im_m)
+            cax.scatter(gt[0, 0], gt[0, 1], color='red', marker='x', label="gt")
+            cax.scatter(pt[0, 0], pt[0, 1], color='yellow', marker='x', label="pred")
+            cax.set_title("Raw image (if supplied)")
+
+            cax = ax2[i, 2] if len(regs_point) > 1 else ax2[2]
+            cax.imshow(un_m)
+            cax.scatter(gt[0, 0], gt[0, 1], color='red', marker='x', label="gt")
+            cax.scatter(pt[0, 0], pt[0, 1], color='yellow', marker='x', label="pred")
+            cax.set_title("Raw unary (if supplied)")
+
+            img_m = ((img - torch.min(img)) /
+                     (torch.max(img) - torch.min(img))).unsqueeze(-1)
+            img_m = (im_m * img_m + un_m * img_m)
+
+            cax = ax2[i, 3] if len(regs_point) > 1 else ax2[3]
+            cax.imshow(img_m)
+            cax.scatter(gt[0, 0], gt[0, 1], color='red', marker='x', label="gt")
+            cax.scatter(pt[0, 0], pt[0, 1], color='yellow', marker='x', label="pred")
+            cax.set_title("Raw unary (if supplied)")
+        plt.show()

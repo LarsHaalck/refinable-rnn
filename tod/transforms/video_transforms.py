@@ -155,7 +155,6 @@ class InverseTransformGtClassification2d(nn.Module):
             data = data[:, 1:]
         # need to swap y,x to x,y
         return data
-        # return data[..., [1, 0]].contiguous()
 
     def forward(self, data):
         if isinstance(data, list):
