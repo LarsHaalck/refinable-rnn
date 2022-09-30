@@ -120,7 +120,7 @@ class TransformGtClassification2d(TransformGtClassification2x1d):
 
     def forward(self, data):
         xy = self.compute1d(data[-1])
-        data[-1] = torch.einsum("ab,ac->abc", xy[:, 0], xy[:, 1])
+        data[-1] = torch.einsum("ab,ac->abc", xy[:, 1], xy[:, 0])
         return data
 
     def __repr__(self):
@@ -154,7 +154,8 @@ class InverseTransformGtClassification2d(nn.Module):
         else:
             data = data[:, 1:]
         # need to swap y,x to x,y
-        return data[..., [1, 0]].contiguous()
+        return data
+        # return data[..., [1, 0]].contiguous()
 
     def forward(self, data):
         if isinstance(data, list):

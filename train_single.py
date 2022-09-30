@@ -1,6 +1,6 @@
 # model
 from tod.model.definition import ModelInterface, load_model_config
-from tod.model.type import ModelType, ModelMode
+from tod.model.type import ModelType
 # data
 from tod.io import VideoDataset, get_folders_from_fold_file, InputType
 # utils
@@ -88,7 +88,6 @@ model_interface = ModelInterface(
     kernel_size=kernel_size,  # only used by hourglass
     kernel_sigma=kernel_sigma,  # only used by hourglass
     freeze_encoder=False,
-    model_mode=ModelMode.Single
 )
 # }}}
 
