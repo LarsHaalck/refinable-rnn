@@ -61,7 +61,7 @@ def _neg_loss2d(preds, gt) -> Tensor:
     if not isinstance(preds, list):
         preds = [preds]
 
-    loss = torch.Tensor(0)
+    loss = 0
     for pred in preds:
         shape = pred.shape
         pred_log = log_softmax(pred.view(shape[0], -1), dim=-1).view(*shape)

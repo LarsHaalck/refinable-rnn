@@ -166,7 +166,7 @@ dataset = VideoDataset(
     folders=train_datasets,
     config={
         "crop_size": crop,
-        "input_type": InputType.ImagesUnaries,
+        "input_type": input_type,
         "video_length": length,
         "disjoint": False
     },
@@ -177,7 +177,7 @@ test_set = VideoDataset(
     folders=test_datasets,
     config={
         "crop_size": crop,
-        "input_type": InputType.ImagesUnaries,
+        "input_type": input_type,
         "video_length": length,
         "disjoint": True
     },
