@@ -45,12 +45,10 @@ kernel_size, kernel_sigma = 31, 1.
 logger.LOG_LEVEL = logger.INFO
 log = logger.getLogger("Train")
 input_type = InputType.ImagesUnaries
-model_type = ModelType.ResnetClass
+model_type = ModelType.HourGlassSqueeze
 
 # empty load_path means "do not load anything"
 load_path, key = get_load_path_from_types(input_type, model_type)
-# load_path = "/data/ant-ml-res/single_InputType.ImagesUnaries_ModelType.HourGlassSqueeze_C1024_G31_S3.0_LR0.0001-2022-09-30_06:56:51/model.pt"
-key = "yeah"
 # }}}
 
 # {{{ model
@@ -172,7 +170,7 @@ with torch.no_grad():
         # [f.write(str(it.item()) + "\n") for it in loss]
         # f.flush()
 
-        temp = 5
+        temp = 10
         if model_type == ModelType.ResnetClass:
             regs_img = torch.outer(
                 softmax(out[0, 1], 0) / temp,
@@ -219,7 +217,11 @@ with torch.no_grad():
             cax.set_title("Raw image (if given)")
 
             cax = ax2[i, 2] if len(regs_point) > 1 else ax2[2]
-            cax.imshow(un_m, cmap=plt.get_cmap("binary") if un_m.mean() == 1 else plt.get_cmap("plasma"))
+            cax.imshow(
+                un_m,
+                cmap=plt.get_cmap("binary")
+                if un_m.mean() == 1 else plt.get_cmap("YlOrBr")
+            )
             cax.scatter(gt[0, 0], gt[0, 1], color='C9', marker='o', label="gt")
             cax.scatter(pt[0, 0], pt[0, 1], color='C3', marker='x', label="pred")
             cax.set_title("Raw unary (if given)")
