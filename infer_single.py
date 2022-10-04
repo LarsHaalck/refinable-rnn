@@ -141,7 +141,7 @@ encoder.eval()
 projector.eval()
 
 losses = torch.tensor([])
-f = open('eval_single_key.csv', 'w')
+f = open(f'eval_single_{key}.csv', 'w')
 
 with torch.no_grad():
     pos0 = torch.tensor([])
