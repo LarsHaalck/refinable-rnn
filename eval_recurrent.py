@@ -1,6 +1,5 @@
 # model
-import pathlib
-import csv
+from tod.model.definition import ModelInterface, load_model_config
 
 # data
 from tod.io import VideoDataset, InputType
@@ -11,6 +10,8 @@ from tod.utils.device import getDevice
 import torch
 import torch.nn as nn
 
+import pathlib
+import csv
 from tqdm import tqdm
 from scipy import interpolate as interp
 from scipy import stats
@@ -31,6 +32,14 @@ def show_results(pos_net_sgl, pos_net_fwd, pos_net_bi, pos_ltracker, pos_gt, gri
     pos_net_bi = pos_net_bi[start:curr_it]
     pos_ltracker = pos_ltracker[start:curr_it]
     pos_gt = pos_gt[start:curr_it]
+
+    # if torch.any(gt == 1023):
+    #     delind.append(i)
+    # pos_net_sgl = np.delete(pos_net_sgl, delind, 0)
+    # pos_net_fwd = np.delete(pos_net_fwd, delind, 0)
+    # pos_net_bi = np.delete(pos_net_bi, delind, 0)
+    # pos_gt = np.delete(pos_gt, delind, 0)
+    # tracker_pred = np.delete(tracker_pred, delind, 0)
 
     pos_net_sgl = inv_transform(pos_net_sgl).numpy()
     pos_net_fwd = inv_transform(pos_net_fwd).numpy()
@@ -124,7 +133,7 @@ def show_results(pos_net_sgl, pos_net_fwd, pos_net_bi, pos_ltracker, pos_gt, gri
 
 
 def signal_handler(sig, frame):
-    show_results(pos_net_sgl, pos_net_fwd, pos_net_bi, pos_ltracker, pos_gt, grid):
+    show_results(pos_net_sgl, pos_net_fwd, pos_net_bi, pos_ltracker, pos_gt, grid)
     sys.exit(0)
 
 
@@ -140,8 +149,14 @@ prefetch_factor = 2
 ########################################################
 # generel settings
 ########################################################
-# {{{
+# {{{ params
 crop = 1024
+kernel_size, kernel_sigma = 31, 3.
+input_type = InputType.ImagesUnaries
+model_type = ModelType.HourGlassSqueeze
+# }}}
+
+# {{ load/save
 load_path = "enc/model.pt"
 load_path_enc = "rec/model.pt"
 logger.LOG_LEVEL = logger.INFO
@@ -187,6 +202,7 @@ with open(
 
     # skip first comment line
     r = 0
+    # TOOD: replace this with inv_transform?
     for row in csv_reader:
         tracker_pred[
             r, 0] = 2. * ((float(row[0]) - (1920. - crop) // 2.) / float(crop)) - 1.
@@ -283,9 +299,11 @@ with torch.no_grad():
             clicks += 1
             flag = False
             log.warning("Set new hidden state")
-            hn = model.get_hidden(
-                (2. * torch.argmax(gt, dim=-1)) / float(crop) - 1.
-            )  # model.get_hidden(torch.argmax(gt, dim=-1) / float(crop) - float(crop) / 2.)  # model.get_hidden(gt)
+
+            # hn = model.get_hidden(torch.argmax(gt, dim=-1) / float(crop) - float(crop) / 2.)
+            # hn = model.get_hidden(gt)
+            # TODO: replace this with inv_transform
+            hn = model.get_hidden((2. * torch.argmax(gt, dim=-1)) / float(crop) - 1.)
 
             # step back to last correction
             curr_hn = (hn[0].clone(), hn[1].clone())
@@ -297,12 +315,19 @@ with torch.no_grad():
                 tmp, _, _ = dataset[k - 1]
                 tmp = tmp.to(device)
                 prev_data[:, -1] = tmp[:, -1]  # replace unary with the one before
+
+                # null data for testing
                 # prev_data[:, :3] = 0
                 # prev_data[:, -1] = 0
+
+                # TODO: maybe try to mask by hand? or is this equivalent to nulling?
+
                 prev_regs, curr_hn = model.forward_single(encoder(prev_data), curr_hn)
                 prev_regs = torch.argmax(prev_regs, dim=-1)
                 prev_regs = prev_regs.to("cpu")
                 prev_regs = (2. * (prev_regs / float(crop)) - 1.)
+
+                # other metrics for averaging
                 # alpha = (k - (curr_it - nth)) / nth
                 # alpha = (k - last_flag) / (curr_it - last_flag)
                 alpha = np.exp(-0.1 * (curr_it - k))
@@ -326,11 +351,15 @@ with torch.no_grad():
         regs_single = torch.stack([regs_x, regs_y], dim=1)
         regs_single = torch.argmax(regs_single, dim=-1)
         regs_single = regs_single.to("cpu")
+
+        # TOOD: replace this with inv_transform?
         regs_single = (2. * (regs_single / float(crop)) - 1.)
 
         regs, hn = model.forward_single(regs, hn)
         regs = torch.argmax(regs, dim=-1)
         regs = regs.to("cpu")
+
+        # TOOD: replace this with inv_transform?
         regs = (2. * (regs / float(crop)) - 1.)
         gt = torch.argmax(gt, dim=-1)
         gt = gt.to("cpu")
@@ -338,8 +367,8 @@ with torch.no_grad():
         # plt.imshow(data[0, :3, :, :].permute(1, 2, 0).cpu())
         # plt.show()
         # plt.close(fig)
-        if torch.any(gt == 1023):
-            delind.append(i)
+
+        # TOOD: replace this with inv_transform?
         gt = (2. * (gt / float(crop)) - 1.)
         pos_net_sgl[i] = regs_single.view(-1, 2)
         pos_net_fwd[i] = regs.view(-1, 2)
@@ -355,14 +384,8 @@ with torch.no_grad():
         # )
         # plt.show()
         # plt.close(fig)
+
 print(pos_gt.shape)
-pos_net_sgl = np.delete(pos_net_sgl, delind, 0)
-pos_net_fwd = np.delete(pos_net_fwd, delind, 0)
-pos_net_bi = np.delete(pos_net_bi, delind, 0)
-pos_gt = np.delete(pos_gt, delind, 0)
-tracker_pred = np.delete(tracker_pred, delind, 0)
-print(pos_gt.shape)
-print(grid)
 print("Video: ", pathlib.Path(vid_path).name)
 print("Encoder: ", load_path_enc)
 print("Recurrent: ", load_path)
