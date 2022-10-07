@@ -314,7 +314,7 @@ class VideoDataset(torch.utils.data.Dataset):
             s, t = self.__get_random_crop_tl(bb)
             gt = (gt - (s, t)).astype(np.float32)
             if (gt < 0).any() or (gt > np.array(self.config["crop_size"])).any():
-                self.log.warning("fuck")
+                self.log.warning("Warning: out of crop gt!")
 
         crop = self.config["crop_size"]
         data = torch.empty(
