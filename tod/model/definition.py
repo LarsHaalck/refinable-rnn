@@ -47,7 +47,7 @@ class ModelInterface():
         kernel_size: int,
         kernel_sigma: float,
         freeze_encoder: bool,
-        hg_across_spatial=True
+        hg_across_spatial: bool = False
     ):
         channels = None
         if input_type == InputType.Unaries:
@@ -88,17 +88,18 @@ class ModelInterface():
                     encoder_dim=encoder_dim, feature_dim=hidden_dim
                 )
                 self.reprojector = Reprojector(
-                    src_dim=hidden_dim, tgt_dim=[int(encoder_dim[0]), 1, 1]
+                    src_dim=hidden_dim,
+                    tgt_dim=[1, int(encoder_dim[1]),
+                             int(encoder_dim[2])]
                 )
             else:
                 hidden_dim = 256
                 self.embedding = GapEmbedding(
-                    encoder_dim=hidden_dim, feature_dim=hidden_dim
+                    encoder_dim=encoder_dim, feature_dim=hidden_dim
                 )
+
                 self.reprojector = Reprojector(
-                    src_dim=hidden_dim,
-                    tgt_dim=[1, int(encoder_dim[1]),
-                             int(encoder_dim[2])]
+                    src_dim=hidden_dim, tgt_dim=[int(encoder_dim[0]), 1, 1]
                 )
 
         if self.type == ModelType.ResnetReg:

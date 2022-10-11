@@ -67,7 +67,7 @@ class RecurrentNet(BaseNetwork):
         curr_regs, hn = self.recurrent_mod(emb_feat.unsqueeze(1), hn)
         curr_regs = self.reprojector(curr_regs)
 
-        curr_regs = enc_feat + curr_regs.squeeze(1)
+        curr_regs = enc_feat + curr_regs
         curr_regs = self.projector(curr_regs)
         return curr_regs, hn
 

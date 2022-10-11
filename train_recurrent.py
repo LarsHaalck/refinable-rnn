@@ -99,16 +99,25 @@ parser.add_argument(
     choices=range(0, 4),
     help='0: ResnetReg, 1: ResnetClass, 2: HGS, 3: HG'
 )
+parser.add_argument(
+    '-s',
+    '--spatial',
+    action='store_const',
+    const=True,
+    default=False,
+    help='HG across spatial or feature'
+)
 
 args = parser.parse_args()
 input_type = InputType(args.input)
 model_type = ModelType(args.type)
+spatial = args.spatial
 # }}}
 
 # {{ load/save
 store_path = (
-    "/data/ant-ml-res/recurrent_{}_{}_C{}_G{}_S{}_LR{}-".
-    format(input_type, model_type, crop, kernel_size, kernel_sigma, lr) +
+    "/data/ant-ml-res/recurrent_{}_{}_C{}_G{}_S{}_LR{}_SF{}-".
+    format(input_type, model_type, crop, kernel_size, kernel_sigma, lr, spatial) +
     datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
 )
 

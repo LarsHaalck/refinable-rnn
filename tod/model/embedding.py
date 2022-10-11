@@ -16,12 +16,14 @@ class GapEmbedding(BaseEmbedding):
         super().__init__()
         ft_in = encoder_dim[0]
 
-        embedding = None
+        embedding = nn.Identity()
         if ft_in != feature_dim:
             embedding = nn.Sequential(
                 Rearrange('n d () () -> n d'),
                 _get_linear(ft_in, feature_dim),
             )
+        else:
+            embedding = Rearrange('n d () () -> n d')
 
         self.embedding = embedding
         self.gap = nn.AdaptiveAvgPool2d((1, 1))
@@ -29,9 +31,7 @@ class GapEmbedding(BaseEmbedding):
 
     def forward(self, data):
         emb = self.gap(data)
-
-        if self.embedding is not None:
-            emb = self.embedding(emb)
+        emb = self.embedding(emb)
 
         return emb
 
