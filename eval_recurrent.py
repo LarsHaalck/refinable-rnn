@@ -19,10 +19,53 @@ from scipy import stats
 import numpy as np
 import matplotlib.pyplot as plt
 import signal
-import sys
+import argparse
+from pathlib import Path
 
 device = getDevice()
 abort = False
+
+paths = {
+    InputType.Images: {
+        ModelType.HourGlassSqueeze: {
+            True: "Recurrent_Images_HourGlassSqueeze_spatial",
+            False: "Recurrent_Images_HourGlassSqueeze"
+        },
+        ModelType.ResnetClass: {
+            True: "",
+            False: "Recurrent_Images_ResnetClass",
+        }
+    },
+    InputType.ImagesUnaries: {
+        ModelType.HourGlass: {
+            True: "Recurrent_ImagesUnaries_HourGlass_spatial",
+            False: "Recurrent_ImagesUnaries_HourGlass"
+        },
+        ModelType.HourGlassSqueeze: {
+            True: "Recurrent_ImagesUnaries_HourGlassSqueeze",
+            False: "Recurrent_ImagesUnaries_HourGlassSqueeze_spatial"
+        },
+        ModelType.ResnetClass: {
+            True: "",
+            False: "Recurrent_ImagesUnaries_ResnetClass"
+        },
+        ModelType.ResnetReg: {
+            True: "Recurrent_ImagesUnaries_ResnetReg",
+            False: ""
+        },
+    },
+    InputType.Unaries: {
+        ModelType.HourGlassSqueeze: {
+            True: "Recurrent_Unaries_HourGlassSqueeze_spatial",
+            False: "Recurrent_Unaries_HourGlassSqueeze"
+        },
+        ModelType.ResnetClass: {
+            True: "",
+            False: "Recurrent_Unaries_ResnetClass"
+        },
+    }
+}
+
 
 def show_results(pos_net_sgl, pos_net_fwd, pos_net_bi, pos_gt, grid, curr_it):
     if torch.numel(pos_net_fwd) == 0:
@@ -57,94 +100,97 @@ def show_results(pos_net_sgl, pos_net_fwd, pos_net_bi, pos_gt, grid, curr_it):
         time[grid], pos_gt[grid, 1], fill_value="extrapolate", kind="linear"
     )(time)
 
-    ax = plt.figure().add_subplot(projection="3d")
-    ax.plot(pos_net_sgl[:, 0], pos_net_sgl[:, 1], time, label="single")
-    ax.plot(pos_net_fwd[:, 0], pos_net_fwd[:, 1], time, label="fwd")
-    ax.plot(pos_net_bi[:, 0], pos_net_bi[:, 1], time, label="bi")
-    # ax.plot(pos_ltracker[:, 0], pos_ltracker[:, 1], time, label="ltracker")
-    ax.plot(pos_gt[:, 0], pos_gt[:, 1], time, label="gt")
-    ax.plot(pos_interp[:, 0], pos_interp[:, 1], time, label="interp")
-    ax.scatter(
-        pos_gt[grid, 0],
-        pos_gt[grid, 1],
-        time[grid],
-        label="clicks",
-        marker="*",
-        color='black',
-        s=50,
-        zorder=10
-    )
-    plt.legend()
-    ax.set_xlim(0, crop)
-    ax.set_ylim(0, crop)
-    plt.show()
+    # ax = plt.figure().add_subplot(projection="3d")
+    # ax.plot(pos_net_sgl[:, 0], pos_net_sgl[:, 1], time, label="single")
+    # ax.plot(pos_net_fwd[:, 0], pos_net_fwd[:, 1], time, label="fwd")
+    # ax.plot(pos_net_bi[:, 0], pos_net_bi[:, 1], time, label="bi")
+    # # ax.plot(pos_ltracker[:, 0], pos_ltracker[:, 1], time, label="ltracker")
+    # ax.plot(pos_gt[:, 0], pos_gt[:, 1], time, label="gt")
+    # ax.plot(pos_interp[:, 0], pos_interp[:, 1], time, label="interp")
+    # ax.scatter(
+    #     pos_gt[grid, 0],
+    #     pos_gt[grid, 1],
+    #     time[grid],
+    #     label="clicks",
+    #     marker="*",
+    #     color='black',
+    #     s=50,
+    #     zorder=10
+    # )
+    # plt.legend()
+    # ax.set_xlim(0, crop)
+    # ax.set_ylim(0, crop)
+    # plt.show()
 
-    dist_sgl = np.linalg.norm(pos_net_sgl - pos_gt, axis=1)
-    dist_fwd = np.linalg.norm(pos_net_fwd - pos_gt, axis=1)
-    dist_bi = np.linalg.norm(pos_net_bi - pos_gt, axis=1)
-    # dist_ltracker = np.linalg.norm(pos_ltracker - pos_gt, axis=1)
-    dist_interp = np.linalg.norm(torch.tensor(pos_interp) - pos_gt, axis=1)
-    ones = np.ones_like(dist_fwd)
+    # dist_sgl = np.linalg.norm(pos_net_sgl - pos_gt, axis=1)
+    # dist_fwd = np.linalg.norm(pos_net_fwd - pos_gt, axis=1)
+    # dist_bi = np.linalg.norm(pos_net_bi - pos_gt, axis=1)
+    # # dist_ltracker = np.linalg.norm(pos_ltracker - pos_gt, axis=1)
+    # dist_interp = np.linalg.norm(torch.tensor(pos_interp) - pos_gt, axis=1)
+    # ones = np.ones_like(dist_fwd)
 
-    _, ax2 = plt.subplots()
-    plt.scatter(0.8 * ones, dist_sgl, c=np.arange(len(dist_bi)), s=4)
-    plt.scatter(1.8 * ones, dist_fwd, c=np.arange(len(dist_fwd)), s=4)
-    plt.scatter(2.8 * ones, dist_bi, c=np.arange(len(dist_bi)), s=4)
-    # plt.scatter(3.8 * ones, dist_ltracker, c=np.arange(len(dist_bi)), s=4)
-    plt.scatter(3.8 * ones, dist_interp, c=np.arange(len(dist_bi)), s=4)
+    # _, ax2 = plt.subplots()
+    # plt.scatter(0.8 * ones, dist_sgl, c=np.arange(len(dist_bi)), s=4)
+    # plt.scatter(1.8 * ones, dist_fwd, c=np.arange(len(dist_fwd)), s=4)
+    # plt.scatter(2.8 * ones, dist_bi, c=np.arange(len(dist_bi)), s=4)
+    # # plt.scatter(3.8 * ones, dist_ltracker, c=np.arange(len(dist_bi)), s=4)
+    # plt.scatter(3.8 * ones, dist_interp, c=np.arange(len(dist_bi)), s=4)
 
-    plt.violinplot([dist_sgl, dist_fwd, dist_bi, dist_interp])
-    # labels = ["single", "fwd", "bi", "ltracker", "interp"]
-    labels = ["single", "fwd", "bi", "interp"]
-    ax2.set_xticks(np.arange(1, len(labels) + 1))
-    ax2.set_xticklabels(labels)
-    # ax2.set_xlim(0.25, len(labels) + 0.75)
-    ax2.set_xlabel('Net architecture')
-    plt.ylim(-100, crop)
-    log.info(
-        "med_sgl = [{}/{}]".format(
-            np.median(dist_sgl), stats.median_abs_deviation(dist_sgl)
-        )
-    )
-    log.info(
-        "med_fwd = [{}/{}]".format(
-            np.median(dist_fwd), stats.median_abs_deviation(dist_fwd)
-        )
-    )
-    log.info(
-        "med_bi = [{}/{}]".format(
-            np.median(dist_bi), stats.median_abs_deviation(dist_bi)
-        )
-    )
+    # plt.violinplot([dist_sgl, dist_fwd, dist_bi, dist_interp])
+    # # labels = ["single", "fwd", "bi", "ltracker", "interp"]
+    # labels = ["single", "fwd", "bi", "interp"]
+    # ax2.set_xticks(np.arange(1, len(labels) + 1))
+    # ax2.set_xticklabels(labels)
+    # # ax2.set_xlim(0.25, len(labels) + 0.75)
+    # ax2.set_xlabel('Net architecture')
+    # plt.ylim(-100, crop)
     # log.info(
-    #     "med_ltracker = [{}/{}]".format(
-    #         np.median(dist_ltracker), stats.median_abs_deviation(dist_ltracker)
+    #     "med_sgl = [{}/{}]".format(
+    #         np.median(dist_sgl), stats.median_abs_deviation(dist_sgl)
     #     )
     # )
-    log.info(
-        "med_int = [{}/{}]".format(
-            np.median(dist_interp), stats.median_abs_deviation(dist_interp)
-        )
-    )
-    log.info("mean_sgl = [{}/{}]".format(np.mean(dist_sgl), np.std(dist_sgl)))
-    log.info("mean_fwd = [{}/{}]".format(np.mean(dist_fwd), np.std(dist_fwd)))
-    log.info("mean_bi = [{}/{}]".format(np.mean(dist_bi), np.std(dist_bi)))
-    # log.info("mean_ltracker = [{}/{}]".format(np.mean(dist_ltracker), np.std(dist_ltracker)))
-    log.info("mean_int = [{}/{}]".format(np.mean(dist_interp), np.std(dist_interp)))
-    plt.show()
+    # log.info(
+    #     "med_fwd = [{}/{}]".format(
+    #         np.median(dist_fwd), stats.median_abs_deviation(dist_fwd)
+    #     )
+    # )
+    # log.info(
+    #     "med_bi = [{}/{}]".format(
+    #         np.median(dist_bi), stats.median_abs_deviation(dist_bi)
+    #     )
+    # )
+    # # log.info(
+    # #     "med_ltracker = [{}/{}]".format(
+    # #         np.median(dist_ltracker), stats.median_abs_deviation(dist_ltracker)
+    # #     )
+    # # )
+    # log.info(
+    #     "med_int = [{}/{}]".format(
+    #         np.median(dist_interp), stats.median_abs_deviation(dist_interp)
+    #     )
+    # )
+    # log.info("mean_sgl = [{}/{}]".format(np.mean(dist_sgl), np.std(dist_sgl)))
+    # log.info("mean_fwd = [{}/{}]".format(np.mean(dist_fwd), np.std(dist_fwd)))
+    # log.info("mean_bi = [{}/{}]".format(np.mean(dist_bi), np.std(dist_bi)))
+    # # log.info("mean_ltracker = [{}/{}]".format(np.mean(dist_ltracker), np.std(dist_ltracker)))
+    # log.info("mean_int = [{}/{}]".format(np.mean(dist_interp), np.std(dist_interp)))
+    # plt.show()
 
-    plt.plot(dist_sgl, label="single")
-    plt.plot(dist_fwd, label="fwd")
-    plt.plot(dist_bi, label="bi")
-    [plt.axvline(g, c='black', linestyle=':') for g in grid]
-    # plt.plot(dist_ltracker, label="ltracker")
-    plt.legend()
-    plt.show()
+    # plt.plot(dist_sgl, label="single")
+    # plt.plot(dist_fwd, label="fwd")
+    # plt.plot(dist_bi, label="bi")
+    # [plt.axvline(g, c='black', linestyle=':') for g in grid]
+    # # plt.plot(dist_ltracker, label="ltracker")
+    # plt.legend()
+    # plt.show()
 
-    np.savetxt("pos_net_fwd.csv", pos_net_fwd)
-    np.savetxt("pos_net_bi.csv", pos_net_bi)
-    np.savetxt("pos_gt.csv", pos_gt)
-    np.savetxt("pos_interp.csv", pos_interp)
+    vid = Path(vid_path).parts[-1]
+    prefix = vid + "_" + str(input_type) + "_" + str(model_type)
+    np.savetxt(f"/data/ant-ml-res/{prefix}pos_net_sgl.csv", pos_net_sgl)
+    np.savetxt(f"/data/ant-ml-res/{prefix}pos_net_fwd.csv", pos_net_fwd)
+    np.savetxt(f"/data/ant-ml-res/{prefix}pos_net_bi.csv", pos_net_bi)
+    np.savetxt(f"/data/ant-ml-res/{prefix}pos_gt.csv", pos_gt)
+    np.savetxt(f"/data/ant-ml-res/{prefix}pos_interp.csv", pos_interp)
 
 
 def signal_handler(sig, frame):
@@ -175,8 +221,40 @@ input_type = InputType.ImagesUnaries
 model_type = ModelType.HourGlassSqueeze
 # }}}
 
+# {{{ argparse
+parser = argparse.ArgumentParser(description='Some desc')
+parser.add_argument(
+    '-i',
+    '--input',
+    required=True,
+    type=int,
+    choices=range(0, 3),
+    help='0: Unaries, 1: Images, 2: ImagesUnaries'
+)
+parser.add_argument(
+    '-t',
+    '--type',
+    required=True,
+    type=int,
+    choices=range(0, 4),
+    help='0: ResnetReg, 1: ResnetClass, 2: HGS, 3: HG'
+)
+parser.add_argument(
+    '-s',
+    '--spatial',
+    action='store_const',
+    const=True,
+    default=False,
+    help='HG across spatial or feature'
+)
+
+args = parser.parse_args()
+input_type = InputType(args.input)
+model_type = ModelType(args.type)
+spatial = args.spatial
+
 # {{ load/save
-load_path = "/data/ant-ml-res/recurrent_InputType.ImagesUnaries_ModelType.HourGlassSqueeze_C1024_G31_S3.0_LR1e-05-2022-10-03_19:16:34/model.pt"
+load_path = "/data/ant-ml-res/" + paths[input_type][model_type][spatial] + "/model.pt"
 logger.LOG_LEVEL = logger.INFO
 log = logger.getLogger("Infer")
 # }}}
@@ -189,6 +267,7 @@ model_interface = ModelInterface(
     kernel_size=kernel_size,  # only used by hourglass
     kernel_sigma=kernel_sigma,  # only used by hourglass
     freeze_encoder=True,
+    hg_across_spatial=spatial,
 )
 # }}}
 
@@ -201,13 +280,13 @@ log.info("Infering with device: {}".format(device))
 transform = model_interface.transform
 inv_transform = model_interface.inv_transform
 
-vid_path = "/data/ant-ml/Ant13R4"
+vid_path = "/data/eval_tod/Ant6ZVF"
 
 dataset = VideoDataset(
     folders=[vid_path],
     config={
         "crop_size": crop,
-        "input_type": InputType.ImagesUnaries,
+        "input_type": input_type,
         "video_length": 0,
         "crop_center": True,
         "disjoint": True,
@@ -278,7 +357,7 @@ pos_net_fwd = torch.empty(len(dataset), 2)
 pos_net_bi = torch.empty(len(dataset), 2)
 pos_gt = torch.empty(len(dataset), 2)
 
-last_flag = 0
+last_flag = start
 flag = False
 grid = []
 clicks = 0
@@ -377,8 +456,8 @@ with torch.no_grad():
         pos_net_bi[i] = regs.view(-1, 2)
         pos_gt[i] = gt.view(-1, 2)
         delta = np.linalg.norm(pos_gt[i] - pos_net_fwd[i], axis=0)
-        # if delta > click_threshold:
-        if delta > click_threshold and curr_it > last_flag + 10:
+        # if delta > click_threshold and curr_it > last_flag + 10:
+        if delta > click_threshold:
             log.warning("Delta {}".format(delta))
             flag = True
 

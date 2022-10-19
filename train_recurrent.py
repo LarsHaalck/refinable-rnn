@@ -140,6 +140,7 @@ model_interface = ModelInterface(
     kernel_size=kernel_size,  # only used by hourglass
     kernel_sigma=kernel_sigma,  # only used by hourglass
     freeze_encoder=True,
+    hg_across_spatial=spatial
 )
 # }}}
 
