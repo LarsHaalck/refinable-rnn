@@ -240,6 +240,14 @@ parser.add_argument(
     help='0: ResnetReg, 1: ResnetClass, 2: HGS, 3: HG'
 )
 parser.add_argument(
+    '-m',
+    '--mode',
+    required=True,
+    type=int,
+    choices=range(0, 3),
+    help='0: threshold, 1: equi, 2: no'
+)
+parser.add_argument(
     '-s',
     '--spatial',
     action='store_const',
@@ -253,6 +261,7 @@ args = parser.parse_args()
 input_type = InputType(args.input)
 model_type = ModelType(args.type)
 spatial = args.spatial
+mode = args.mode
 
 # {{ load/save
 load_path = "/data/ant-ml-res/recurrent/" + paths[input_type][model_type][spatial] + "/model.pt"
@@ -457,10 +466,16 @@ with torch.no_grad():
         pos_net_bi[i] = regs.view(-1, 2)
         pos_gt[i] = gt.view(-1, 2)
         delta = np.linalg.norm(pos_gt[i] - pos_net_fwd[i], axis=0)
-        # if delta > click_threshold and curr_it > last_flag + 10:
-        if delta > click_threshold:
-            log.warning("Delta {}".format(delta))
-            flag = True
+        if mode == 0:
+            if delta > click_threshold:
+                log.warning("delta flag {}".format(delta))
+                flag = True
+        elif mode == 1:
+            if curr_it - last_flag == 50:
+                log.warning("equidist flag")
+                flag = True
+        else:
+            pass
 
         curr_it += 1
 
