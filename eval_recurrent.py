@@ -186,11 +186,11 @@ def show_results(pos_net_sgl, pos_net_fwd, pos_net_bi, pos_gt, grid, curr_it):
 
     vid = Path(vid_path).parts[-1]
     prefix = vid + "_" + str(input_type) + "_" + str(model_type)
-    np.savetxt(f"/data/ant-ml-res/{prefix}pos_net_sgl.csv", pos_net_sgl)
-    np.savetxt(f"/data/ant-ml-res/{prefix}pos_net_fwd.csv", pos_net_fwd)
-    np.savetxt(f"/data/ant-ml-res/{prefix}pos_net_bi.csv", pos_net_bi)
-    np.savetxt(f"/data/ant-ml-res/{prefix}pos_gt.csv", pos_gt)
-    np.savetxt(f"/data/ant-ml-res/{prefix}pos_interp.csv", pos_interp)
+    np.savetxt(f"/data/ant-ml-res/{prefix}_pos_net_sgl.csv", pos_net_sgl, header=str(clicks))    # noqa
+    np.savetxt(f"/data/ant-ml-res/{prefix}_pos_net_fwd.csv", pos_net_fwd, header=str(clicks))    # noqa
+    np.savetxt(f"/data/ant-ml-res/{prefix}_pos_net_bi.csv", pos_net_bi, header=str(clicks))      # noqa
+    np.savetxt(f"/data/ant-ml-res/{prefix}_pos_gt.csv", pos_gt, header=str(clicks))              # noqa
+    np.savetxt(f"/data/ant-ml-res/{prefix}_pos_interp.csv", pos_interp, header=str(clicks))      # noqa
 
 
 def signal_handler(sig, frame):
