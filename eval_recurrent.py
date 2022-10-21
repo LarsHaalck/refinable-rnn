@@ -42,8 +42,8 @@ paths = {
             False: "Recurrent_ImagesUnaries_HourGlass"
         },
         ModelType.HourGlassSqueeze: {
-            True: "Recurrent_ImagesUnaries_HourGlassSqueeze",
-            False: "Recurrent_ImagesUnaries_HourGlassSqueeze_spatial"
+            True: "Recurrent_ImagesUnaries_HourGlassSqueeze_spatial",
+            False: "Recurrent_ImagesUnaries_HourGlassSqueeze"
         },
         ModelType.ResnetClass: {
             True: "",
@@ -247,6 +247,7 @@ parser.add_argument(
     default=False,
     help='HG across spatial or feature'
 )
+parser.add_argument('vidpath', type=pathlib.Path)
 
 args = parser.parse_args()
 input_type = InputType(args.input)
@@ -254,7 +255,7 @@ model_type = ModelType(args.type)
 spatial = args.spatial
 
 # {{ load/save
-load_path = "/data/ant-ml-res/" + paths[input_type][model_type][spatial] + "/model.pt"
+load_path = "/data/ant-ml-res/recurrent/" + paths[input_type][model_type][spatial] + "/model.pt"
 logger.LOG_LEVEL = logger.INFO
 log = logger.getLogger("Infer")
 # }}}
@@ -280,7 +281,7 @@ log.info("Infering with device: {}".format(device))
 transform = model_interface.transform
 inv_transform = model_interface.inv_transform
 
-vid_path = "/data/eval_tod/Ant6ZVF"
+vid_path = args.vidpath
 
 dataset = VideoDataset(
     folders=[vid_path],
