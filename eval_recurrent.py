@@ -38,7 +38,7 @@ paths = {
     },
     InputType.ImagesUnaries: {
         ModelType.HourGlass: {
-            True: "Recurrent_ImagesUnaries_HourGlass_spatial",
+            True: "",
             False: "Recurrent_ImagesUnaries_HourGlass"
         },
         ModelType.HourGlassSqueeze: {
@@ -50,8 +50,8 @@ paths = {
             False: "Recurrent_ImagesUnaries_ResnetClass"
         },
         ModelType.ResnetReg: {
-            True: "Recurrent_ImagesUnaries_ResnetReg",
-            False: ""
+            True: "",
+            False: "Recurrent_ImagesUnaries_ResnetReg"
         },
     },
     InputType.Unaries: {
@@ -77,18 +77,15 @@ def show_results(pos_net_sgl, pos_net_fwd, pos_net_bi, pos_gt, grid, curr_it):
     # pos_ltracker = pos_ltracker[start:curr_it]
     pos_gt = pos_gt[start:curr_it]
 
-    gt = (pos_gt > crop).any(axis=1).nonzero()
-    lt = (pos_gt < 0).any(axis=1).nonzero()
-    delind = np.unique(np.sort(np.r_[gt, lt], axis=0))
-    pos_net_sgl = np.delete(pos_net_sgl, delind, axis=0)
-    pos_net_fwd = np.delete(pos_net_fwd, delind, axis=0)
-    pos_net_bi = np.delete(pos_net_bi, delind, axis=0)
-    pos_gt = np.delete(pos_gt, delind, axis=0)
+    # gt = (pos_gt > crop).any(axis=1).nonzero()
+    # lt = (pos_gt < 0).any(axis=1).nonzero()
+    # delind = np.unique(np.sort(np.r_[gt, lt], axis=0))
+    # pos_net_sgl = np.delete(pos_net_sgl, delind, axis=0)
+    # pos_net_fwd = np.delete(pos_net_fwd, delind, axis=0)
+    # pos_net_bi = np.delete(pos_net_bi, delind, axis=0)
+    # pos_gt = np.delete(pos_gt, delind, axis=0)
     # tracker_pred = np.delete(tracker_pred, delind, axis=0)
-    curr_it -= len(delind)
-
-    # if grid[-1] != curr_it - start - 1:
-    #     grid.append(curr_it - start - 1)
+    # curr_it -= len(delind)
 
     time = np.arange(len(pos_gt))
 
@@ -99,6 +96,15 @@ def show_results(pos_net_sgl, pos_net_fwd, pos_net_bi, pos_gt, grid, curr_it):
     pos_interp[:, 1] = interp.interp1d(
         time[grid], pos_gt[grid, 1], fill_value="extrapolate", kind="linear"
     )(time)
+
+    gt = (pos_gt > crop).any(axis=1).nonzero()
+    lt = (pos_gt < 0).any(axis=1).nonzero()
+    delind = np.unique(np.sort(np.r_[gt, lt], axis=0))
+    pos_net_sgl = np.delete(pos_net_sgl, delind, axis=0)
+    pos_net_fwd = np.delete(pos_net_fwd, delind, axis=0)
+    pos_net_bi = np.delete(pos_net_bi, delind, axis=0)
+    pos_interp = np.delete(pos_interp, delind, axis=0)
+    pos_gt = np.delete(pos_gt, delind, axis=0)
 
     # ax = plt.figure().add_subplot(projection="3d")
     # ax.plot(pos_net_sgl[:, 0], pos_net_sgl[:, 1], time, label="single")
@@ -185,7 +191,7 @@ def show_results(pos_net_sgl, pos_net_fwd, pos_net_bi, pos_gt, grid, curr_it):
     # plt.show()
 
     vid = Path(vid_path).parts[-1]
-    prefix = vid + "_" + str(input_type) + "_" + str(model_type)
+    prefix = vid + "_" + str(input_type) + "_" + str(model_type) + "_" + str(spatial) + "_" + str(mode)
     np.savetxt(f"/data/ant-ml-res/{prefix}_pos_net_sgl.csv", pos_net_sgl, header=str(clicks))    # noqa
     np.savetxt(f"/data/ant-ml-res/{prefix}_pos_net_fwd.csv", pos_net_fwd, header=str(clicks))    # noqa
     np.savetxt(f"/data/ant-ml-res/{prefix}_pos_net_bi.csv", pos_net_bi, header=str(clicks))      # noqa
