@@ -50,8 +50,8 @@ paths = {
             False: "Recurrent_ImagesUnaries_ResnetClass"
         },
         ModelType.ResnetReg: {
-            True: "Recurrent_ImagesUnaries_ResnetReg",
-            False: ""
+            True: "",
+            False: "Recurrent_ImagesUnaries_ResnetReg"
         },
     },
     InputType.Unaries: {
@@ -77,19 +77,6 @@ def show_results(pos_net_sgl, pos_net_fwd, pos_net_bi, pos_gt, grid, curr_it):
     # pos_ltracker = pos_ltracker[start:curr_it]
     pos_gt = pos_gt[start:curr_it]
 
-    gt = (pos_gt > crop).any(axis=1).nonzero()
-    lt = (pos_gt < 0).any(axis=1).nonzero()
-    delind = np.unique(np.sort(np.r_[gt, lt], axis=0))
-    pos_net_sgl = np.delete(pos_net_sgl, delind, axis=0)
-    pos_net_fwd = np.delete(pos_net_fwd, delind, axis=0)
-    pos_net_bi = np.delete(pos_net_bi, delind, axis=0)
-    pos_gt = np.delete(pos_gt, delind, axis=0)
-    # tracker_pred = np.delete(tracker_pred, delind, axis=0)
-    curr_it -= len(delind)
-
-    # if grid[-1] != curr_it - start - 1:
-    #     grid.append(curr_it - start - 1)
-
     time = np.arange(len(pos_gt))
 
     pos_interp = np.empty_like(pos_gt)
@@ -100,92 +87,102 @@ def show_results(pos_net_sgl, pos_net_fwd, pos_net_bi, pos_gt, grid, curr_it):
         time[grid], pos_gt[grid, 1], fill_value="extrapolate", kind="linear"
     )(time)
 
-    # ax = plt.figure().add_subplot(projection="3d")
-    # ax.plot(pos_net_sgl[:, 0], pos_net_sgl[:, 1], time, label="single")
-    # ax.plot(pos_net_fwd[:, 0], pos_net_fwd[:, 1], time, label="fwd")
-    # ax.plot(pos_net_bi[:, 0], pos_net_bi[:, 1], time, label="bi")
-    # # ax.plot(pos_ltracker[:, 0], pos_ltracker[:, 1], time, label="ltracker")
-    # ax.plot(pos_gt[:, 0], pos_gt[:, 1], time, label="gt")
-    # ax.plot(pos_interp[:, 0], pos_interp[:, 1], time, label="interp")
-    # ax.scatter(
-    #     pos_gt[grid, 0],
-    #     pos_gt[grid, 1],
-    #     time[grid],
-    #     label="clicks",
-    #     marker="*",
-    #     color='black',
-    #     s=50,
-    #     zorder=10
-    # )
-    # plt.legend()
-    # ax.set_xlim(0, crop)
-    # ax.set_ylim(0, crop)
-    # plt.show()
+    gt = (pos_gt > crop).any(axis=1).nonzero()
+    lt = (pos_gt < 0).any(axis=1).nonzero()
+    delind = np.unique(np.sort(np.r_[gt, lt], axis=0))
+    pos_net_sgl = np.delete(pos_net_sgl, delind, axis=0)
+    pos_net_fwd = np.delete(pos_net_fwd, delind, axis=0)
+    pos_net_bi = np.delete(pos_net_bi, delind, axis=0)
+    pos_gt = np.delete(pos_gt, delind, axis=0)
+    # tracker_pred = np.delete(tracker_pred, delind, axis=0)
 
-    # dist_sgl = np.linalg.norm(pos_net_sgl - pos_gt, axis=1)
-    # dist_fwd = np.linalg.norm(pos_net_fwd - pos_gt, axis=1)
-    # dist_bi = np.linalg.norm(pos_net_bi - pos_gt, axis=1)
-    # # dist_ltracker = np.linalg.norm(pos_ltracker - pos_gt, axis=1)
-    # dist_interp = np.linalg.norm(torch.tensor(pos_interp) - pos_gt, axis=1)
-    # ones = np.ones_like(dist_fwd)
 
-    # _, ax2 = plt.subplots()
-    # plt.scatter(0.8 * ones, dist_sgl, c=np.arange(len(dist_bi)), s=4)
-    # plt.scatter(1.8 * ones, dist_fwd, c=np.arange(len(dist_fwd)), s=4)
-    # plt.scatter(2.8 * ones, dist_bi, c=np.arange(len(dist_bi)), s=4)
-    # # plt.scatter(3.8 * ones, dist_ltracker, c=np.arange(len(dist_bi)), s=4)
-    # plt.scatter(3.8 * ones, dist_interp, c=np.arange(len(dist_bi)), s=4)
+    ax = plt.figure().add_subplot(projection="3d")
+    ax.plot(pos_net_sgl[:, 0], pos_net_sgl[:, 1], time, label="single")
+    ax.plot(pos_net_fwd[:, 0], pos_net_fwd[:, 1], time, label="fwd")
+    ax.plot(pos_net_bi[:, 0], pos_net_bi[:, 1], time, label="bi")
+    # ax.plot(pos_ltracker[:, 0], pos_ltracker[:, 1], time, label="ltracker")
+    ax.plot(pos_gt[:, 0], pos_gt[:, 1], time, label="gt")
+    ax.plot(pos_interp[:, 0], pos_interp[:, 1], time, label="interp")
+    ax.scatter(
+        pos_gt[grid, 0],
+        pos_gt[grid, 1],
+        time[grid],
+        label="clicks",
+        marker="*",
+        color='black',
+        s=50,
+        zorder=10
+    )
+    plt.legend()
+    ax.set_xlim(0, crop)
+    ax.set_ylim(0, crop)
+    plt.show()
 
-    # plt.violinplot([dist_sgl, dist_fwd, dist_bi, dist_interp])
-    # # labels = ["single", "fwd", "bi", "ltracker", "interp"]
-    # labels = ["single", "fwd", "bi", "interp"]
-    # ax2.set_xticks(np.arange(1, len(labels) + 1))
-    # ax2.set_xticklabels(labels)
-    # # ax2.set_xlim(0.25, len(labels) + 0.75)
-    # ax2.set_xlabel('Net architecture')
-    # plt.ylim(-100, crop)
+    dist_sgl = np.linalg.norm(pos_net_sgl - pos_gt, axis=1)
+    dist_fwd = np.linalg.norm(pos_net_fwd - pos_gt, axis=1)
+    dist_bi = np.linalg.norm(pos_net_bi - pos_gt, axis=1)
+    # dist_ltracker = np.linalg.norm(pos_ltracker - pos_gt, axis=1)
+    dist_interp = np.linalg.norm(torch.tensor(pos_interp) - pos_gt, axis=1)
+    ones = np.ones_like(dist_fwd)
+
+    _, ax2 = plt.subplots()
+    plt.scatter(0.8 * ones, dist_sgl, c=np.arange(len(dist_bi)), s=4)
+    plt.scatter(1.8 * ones, dist_fwd, c=np.arange(len(dist_fwd)), s=4)
+    plt.scatter(2.8 * ones, dist_bi, c=np.arange(len(dist_bi)), s=4)
+    # plt.scatter(3.8 * ones, dist_ltracker, c=np.arange(len(dist_bi)), s=4)
+    plt.scatter(3.8 * ones, dist_interp, c=np.arange(len(dist_bi)), s=4)
+
+    plt.violinplot([dist_sgl, dist_fwd, dist_bi])
+    # labels = ["single", "fwd", "bi", "ltracker", "interp"]
+    labels = ["single", "fwd", "bi", "interp"]
+    ax2.set_xticks(np.arange(1, len(labels) + 1))
+    ax2.set_xticklabels(labels)
+    # ax2.set_xlim(0.25, len(labels) + 0.75)
+    ax2.set_xlabel('Net architecture')
+    plt.ylim(-100, crop)
+    log.info(
+        "med_sgl = [{}/{}]".format(
+            np.median(dist_sgl), stats.median_abs_deviation(dist_sgl)
+        )
+    )
+    log.info(
+        "med_fwd = [{}/{}]".format(
+            np.median(dist_fwd), stats.median_abs_deviation(dist_fwd)
+        )
+    )
+    log.info(
+        "med_bi = [{}/{}]".format(
+            np.median(dist_bi), stats.median_abs_deviation(dist_bi)
+        )
+    )
     # log.info(
-    #     "med_sgl = [{}/{}]".format(
-    #         np.median(dist_sgl), stats.median_abs_deviation(dist_sgl)
+    #     "med_ltracker = [{}/{}]".format(
+    #         np.median(dist_ltracker), stats.median_abs_deviation(dist_ltracker)
     #     )
     # )
-    # log.info(
-    #     "med_fwd = [{}/{}]".format(
-    #         np.median(dist_fwd), stats.median_abs_deviation(dist_fwd)
-    #     )
-    # )
-    # log.info(
-    #     "med_bi = [{}/{}]".format(
-    #         np.median(dist_bi), stats.median_abs_deviation(dist_bi)
-    #     )
-    # )
-    # # log.info(
-    # #     "med_ltracker = [{}/{}]".format(
-    # #         np.median(dist_ltracker), stats.median_abs_deviation(dist_ltracker)
-    # #     )
-    # # )
-    # log.info(
-    #     "med_int = [{}/{}]".format(
-    #         np.median(dist_interp), stats.median_abs_deviation(dist_interp)
-    #     )
-    # )
-    # log.info("mean_sgl = [{}/{}]".format(np.mean(dist_sgl), np.std(dist_sgl)))
-    # log.info("mean_fwd = [{}/{}]".format(np.mean(dist_fwd), np.std(dist_fwd)))
-    # log.info("mean_bi = [{}/{}]".format(np.mean(dist_bi), np.std(dist_bi)))
-    # # log.info("mean_ltracker = [{}/{}]".format(np.mean(dist_ltracker), np.std(dist_ltracker)))
-    # log.info("mean_int = [{}/{}]".format(np.mean(dist_interp), np.std(dist_interp)))
-    # plt.show()
+    log.info(
+        "med_int = [{}/{}]".format(
+            np.median(dist_interp), stats.median_abs_deviation(dist_interp)
+        )
+    )
+    log.info("mean_sgl = [{}/{}]".format(np.mean(dist_sgl), np.std(dist_sgl)))
+    log.info("mean_fwd = [{}/{}]".format(np.mean(dist_fwd), np.std(dist_fwd)))
+    log.info("mean_bi = [{}/{}]".format(np.mean(dist_bi), np.std(dist_bi)))
+    # log.info("mean_ltracker = [{}/{}]".format(np.mean(dist_ltracker), np.std(dist_ltracker)))
+    log.info("mean_int = [{}/{}]".format(np.mean(dist_interp), np.std(dist_interp)))
+    plt.show()
 
-    # plt.plot(dist_sgl, label="single")
-    # plt.plot(dist_fwd, label="fwd")
-    # plt.plot(dist_bi, label="bi")
-    # [plt.axvline(g, c='black', linestyle=':') for g in grid]
-    # # plt.plot(dist_ltracker, label="ltracker")
-    # plt.legend()
-    # plt.show()
+    plt.plot(dist_sgl, label="single")
+    plt.plot(dist_fwd, label="fwd")
+    plt.plot(dist_bi, label="bi")
+    [plt.axvline(g, c='black', linestyle=':') for g in grid]
+    # plt.plot(dist_ltracker, label="ltracker")
+    plt.legend()
+    plt.show()
 
     vid = Path(vid_path).parts[-1]
-    prefix = vid + "_" + str(input_type) + "_" + str(model_type)
+    prefix = vid + "_" + str(input_type) + "_" + str(model_type) + "_" + str(spatial)
     np.savetxt(f"/data/ant-ml-res/{prefix}_pos_net_sgl.csv", pos_net_sgl, header=str(clicks))    # noqa
     np.savetxt(f"/data/ant-ml-res/{prefix}_pos_net_fwd.csv", pos_net_fwd, header=str(clicks))    # noqa
     np.savetxt(f"/data/ant-ml-res/{prefix}_pos_net_bi.csv", pos_net_bi, header=str(clicks))      # noqa
@@ -310,7 +307,10 @@ log.info("Dataset element sizes {} {}".format(first_elem[0].shape, first_elem[1]
 log.info("dataset size {}".format(len(dataset)))
 
 start, end = 0, len(dataset)
-start = 1000
+# start = 1982
+# end = start + 50
+# start = 1500
+# end = start + 150
 curr_it = start
 # }}}
 
@@ -371,22 +371,22 @@ last_flag = start
 flag = False
 grid = []
 clicks = 0
-click_threshold = 50
+click_threshold = 60
 with torch.no_grad():
     hn = None
-    for i in tqdm(range(start, end)):
+    bar = tqdm(total=(end - start))
+    while curr_it < end:
         if abort:
             flag = True
+            if last_flag == curr_it - 1:
+                break
 
-        if abort and last_flag == curr_it - 1:
-            break
-
-        data, _, gt = dataset[i]
+        data, _, gt = dataset[curr_it]
         data = data.to(device)
         gt = torch.tensor(gt).to(device)
 
         # make sure we have at least two points for linear interpolation
-        if hn is None or flag or i == end - 1:
+        if hn is None or flag or curr_it == end - 1:
             clicks += 1
             flag = False
             log.warning("Set new hidden state")
@@ -395,89 +395,79 @@ with torch.no_grad():
 
             # step back to last correction
             curr_hn = (hn[0].clone(), hn[1].clone())
-            for k in tqdm(range(curr_it, last_flag, -1)):
-                if k < 0:
+            for k in tqdm(range(curr_it - 1, last_flag, -1)):
+                if k < 1:
                     continue
                 prev_data, prev_label, _ = dataset[k]
                 prev_data = prev_data.to(device)
-                tmp, _, _ = dataset[k - 1]
-                tmp = tmp.to(device)
-                prev_data[:, -1] = tmp[:, -1]  # replace unary with the one before
 
-                # TODO: maybe try to occlude by hand? or is this equivalent to nulling?
-                # null data for testing
-                # prev_data[:, :3] = 0
-                # prev_data[:, -1] = 0
+                # replace unary with the one before if input type contains unaries
+                if input_type in [InputType.ImagesUnaries, InputType.Unaries]:
+                    tmp, _, _ = dataset[k - 1]
+                    tmp = tmp.to(device)
+                    prev_data[:, -1] = tmp[:, -1]
 
                 prev_regs, curr_hn = recurrent(prev_data, curr_hn)
-                prev_regs = inv_transform(prev_regs).to("cpu")
-                # prev_regs = (2. * prev_regs) / crop - 1.
+                prev_regs = inv_transform(prev_regs).to("cpu").view(-1, 2)
 
                 # other metrics for averaging
                 # alpha = (k - (curr_it - nth)) / nth
                 # alpha = (k - last_flag) / (curr_it - last_flag)
-                alpha = np.exp(-0.2 * (curr_it - k))
-                if alpha < 0.05:
+                alpha = np.exp(-0.2 * (curr_it - 1 - k))
+                if alpha < 0.02:
                     break
 
-                pos_net_bi[k] = (1 -
-                                 alpha) * pos_net_fwd[k] + alpha * prev_regs.view(-1, 2)
-                # pos_net_bi[k] = prev_regs.view(-1, 2)
+                pos_net_bi[k] = (1 - alpha) * pos_net_fwd[k] + alpha * prev_regs
 
             grid.append(curr_it - start)
             last_flag = curr_it
 
-
-        # TODO: maybe try to occlude by hand? or is this equivalent to nulling?
-        # null data for testing
-        # data[:, :3] = 0
-        # data[:, -1] = 0
-
         enc = recurrent.encoder(data)
         regs_single = recurrent.projector(enc)
-        regs_single = inv_transform(regs_single)
+        regs_single_inv = inv_transform(regs_single)
 
         regs, hn = recurrent(data, hn)
-        regs = inv_transform(regs)
+        regs_inv = inv_transform(regs)
 
         if model_type in [ModelType.HourGlass, ModelType.HourGlassSqueeze]:
-            regs_single = regs_single[-1].to("cpu")
-            regs = regs[-1].to("cpu")
+            regs_single_inv = regs_single_inv[-1].to("cpu").view(-1, 2)
         else:
-            regs_single = regs_single.to("cpu")
-            regs = regs.to("cpu")
+            regs_single_inv = regs_single_inv.to("cpu").view(-1, 2)
 
-        gt = gt.to("cpu")
+        regs_inv = regs_inv.to("cpu").view(-1, 2)
 
-        # fig = plt.figure()
-        # plt.imshow(data[0, :3, :, :].permute(1, 2, 0).cpu())
-        # plt.show()
-        # plt.close(fig)
+        gt = gt.to("cpu").view(-1, 2)
 
-        # fig = show_single_item(
-        #     (data.cpu().numpy(), gt.cpu().numpy()), [regs.cpu().numpy()],
-        #     show=False
-        # )
-        # plt.show()
-        # plt.close(fig)
+        # for heatmap gen
+        # np.save(f"reccur_{curr_it}.npy", regs.to("cpu").numpy())
+        # np.save(f"images_{curr_it}.npy", data.to("cpu").numpy())
+        # np.save(f"single_{curr_it}.npy", regs_single[-1].to("cpu").numpy())
+        # np.save(f"pos_single_{curr_it}.npy", regs_single_inv)
+        # np.save(f"pos_recurrent_{curr_it}.npy", regs_inv)
+        # np.save(f"pos_gt_{curr_it}.npy", gt.numpy())
 
-        pos_net_sgl[i] = regs_single.view(-1, 2)
-        pos_net_fwd[i] = regs.view(-1, 2)
-        pos_net_bi[i] = regs.view(-1, 2)
-        pos_gt[i] = gt.view(-1, 2)
-        delta = np.linalg.norm(pos_gt[i] - pos_net_fwd[i], axis=0)
+        pos_net_sgl[curr_it] = regs_single_inv
+        pos_net_fwd[curr_it] = regs_inv
+        pos_net_bi[curr_it] = regs_inv
+        pos_gt[curr_it] = gt
+
+        delta = np.linalg.norm(gt.squeeze() - regs_inv.squeeze(), axis=0)
         if mode == 0:
-            if delta > click_threshold:
+            if delta > click_threshold and last_flag != curr_it:
                 log.warning("delta flag {}".format(delta))
                 flag = True
+                continue
+            if delta > click_threshold and last_flag == curr_it:
+                log.warning("no improvement: {}".format(delta))
         elif mode == 1:
             if curr_it - last_flag == 50:
                 log.warning("equidist flag")
                 flag = True
-        else:
-            pass
+                continue
 
+        bar.update(1)
         curr_it += 1
+
 
 log.info("Num gt: {}".format(pos_gt.shape))
 log.info("Video: {}".format(pathlib.Path(vid_path).name))
