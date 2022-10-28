@@ -2,6 +2,12 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from einops import rearrange, reduce
 import numpy as np
+import torch
+from tod.model.definition import ModelType
+from tod.io import InputType
+from torch.nn.functional import softmax
+from torch import nn
+from einops.layers.torch import Rearrange
 
 
 def show_single_item(item, preds=[], show=True):
@@ -222,3 +228,68 @@ def plot_attention(
             plt.subplot(depth, sps, sps * i + 2)
             curr_att = reduce(curr_att, 'a (t x) -> a t', 'sum', t=time_steps)
             plt.matshow(curr_att, fignum=False)
+
+
+def plot_heatmap(*, input_type, input, crop, model_type, out, regs_point, gt, temp=10):
+    if model_type == ModelType.ResnetClass:
+        regs_img = torch.outer(
+            softmax(out[0, 1] / temp, 0), softmax(out[0, 0] / temp, 0)
+        ).to("cpu")
+        regs_img /= regs_img.max()
+        regs_img = [regs_img]
+    elif model_type == ModelType.ResnetReg:
+        regs_img = [torch.ones(crop, crop, 1)]
+    else:
+        sm = nn.Sequential(
+            Rearrange("b h w -> b (h w)"),
+            nn.Softmax(dim=-1),
+            Rearrange("b (h w) -> b h w", h=crop, w=crop),
+        )
+        regs_img = [sm(o / temp).to("cpu").squeeze() for o in out]
+        regs_img = [o / o.max() for o in regs_img]
+
+    _, ax = plt.subplots(len(regs_point), 4)
+    input = input.to("cpu")
+
+    for i, img in enumerate(regs_img):
+        pt = regs_point[i]
+        if input_type in [InputType.Unaries, InputType.ImagesUnaries]:
+            un_m = input[0, 0, [-1]].permute(1, 2, 0)
+        else:
+            un_m = torch.ones(*input[0, 0].shape[1:], 1)
+
+        if input_type in [InputType.Images, InputType.ImagesUnaries]:
+            im_m = input[0, 0, :3].permute(1, 2, 0)
+        else:
+            im_m = torch.ones(*input[0, 0].shape[1:], 1)
+
+        cax = ax[i, 0] if len(regs_point) > 1 else ax[0]
+        cax.imshow(img.squeeze(0), cmap=plt.get_cmap("YlOrBr"))
+        cax.scatter(gt[0, 0], gt[0, 1], color='C9', marker='o', label="gt")
+        cax.scatter(pt[0, 0], pt[0, 1], color='C3', marker='x', label="pred")
+        cax.set_title("Heatmap")
+
+        cax = ax[i, 1] if len(regs_point) > 1 else ax[1]
+        cax.imshow(im_m)
+        cax.scatter(gt[0, 0], gt[0, 1], color='C9', marker='o', label="gt")
+        cax.scatter(pt[0, 0], pt[0, 1], color='C3', marker='x', label="pred")
+        cax.set_title("Raw image (if given)")
+
+        cax = ax[i, 2] if len(regs_point) > 1 else ax[2]
+        cax.imshow(
+            un_m,
+            cmap=plt.get_cmap("binary") if un_m.mean() == 1 else plt.get_cmap("YlOrBr")
+        )
+        cax.scatter(gt[0, 0], gt[0, 1], color='C9', marker='o', label="gt")
+        cax.scatter(pt[0, 0], pt[0, 1], color='C3', marker='x', label="pred")
+        cax.set_title("Raw unary (if given)")
+
+        img_m = img.unsqueeze(-1)
+        img_m = (im_m * img_m + un_m * img_m)
+
+        cax = ax[i, 3] if len(regs_point) > 1 else ax[3]
+        cax.imshow(img_m)
+        cax.scatter(gt[0, 0], gt[0, 1], color='C9', marker='o', label="gt")
+        cax.scatter(pt[0, 0], pt[0, 1], color='C3', marker='x', label="pred")
+        cax.set_title("Raw unary (if given)")
+    plt.show()

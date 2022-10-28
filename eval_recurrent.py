@@ -182,31 +182,17 @@ def show_results(pos_net_sgl, pos_net_fwd, pos_net_bi, pos_gt, grid, curr_it):
     plt.show()
 
     vid = Path(vid_path).parts[-1]
-    prefix = vid + "_" + str(input_type) + "_" + str(model_type) + "_" + str(
-        spatial
-    ) + "_" + str(mode)
-    np.savetxt(
-        f"/data/ant-ml-res/{prefix}_pos_net_sgl.csv", pos_net_sgl, header=str(clicks)
-    )  # noqa
-    np.savetxt(
-        f"/data/ant-ml-res/{prefix}_pos_net_fwd.csv", pos_net_fwd, header=str(clicks)
-    )  # noqa
-    np.savetxt(
-        f"/data/ant-ml-res/{prefix}_pos_net_bi.csv", pos_net_bi, header=str(clicks)
-    )  # noqa
-    np.savetxt(
-        f"/data/ant-ml-res/{prefix}_pos_gt.csv", pos_gt, header=str(clicks)
-    )  # noqa
-    np.savetxt(
-        f"/data/ant-ml-res/{prefix}_pos_interp.csv", pos_interp, header=str(clicks)
-    )  # noqa
+    prefix = vid + "_" + str(input_type) + "_" + str(model_type) + "_" + str(spatial) + "_" + str(mode)  # noqa
+    np.savetxt(f"/data/ant-ml-res/{prefix}_pos_net_sgl.csv", pos_net_sgl, header=str(clicks))  # noqa
+    np.savetxt(f"/data/ant-ml-res/{prefix}_pos_net_fwd.csv", pos_net_fwd, header=str(clicks))  # noqa
+    np.savetxt(f"/data/ant-ml-res/{prefix}_pos_net_bi.csv", pos_net_bi, header=str(clicks))  # noqa
+    np.savetxt(f"/data/ant-ml-res/{prefix}_pos_gt.csv", pos_gt, header=str(clicks))  # noqa
+    np.savetxt(f"/data/ant-ml-res/{prefix}_pos_interp.csv", pos_interp, header=str(clicks))  # noqa
 
 
 def signal_handler(sig, frame):
     global abort
     signal.signal(signal.SIGINT, orig_handler)
-    # show_results(pos_net_sgl, pos_net_fwd, pos_net_bi, pos_gt, grid, curr_it)
-    # sys.exit(0)
     abort = True
 
 
