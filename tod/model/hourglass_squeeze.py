@@ -72,24 +72,24 @@ class HourGlassSqueeze(nn.Module):
 
     def _pred_mod(self, dim):
         return nn.Sequential(
-            convolution(1, 256, 256, with_bn=False), nn.Conv2d(256, dim, (1, 1))
+            convolution(1, 1024, 1024, with_bn=False), nn.Conv2d(1024, dim, (1, 1))
         )
 
     def _merge_mod(self):
-        return nn.Sequential(nn.Conv2d(256, 256, (1, 1), bias=False), nn.BatchNorm2d(256))
+        return nn.Sequential(nn.Conv2d(1024, 1024, (1, 1), bias=False), nn.BatchNorm2d(1024))
 
     def __init__(self, *, channels=3, pretrained=False):
         super().__init__()
 
         stacks = 2
         pre = nn.Sequential(
-            convolution(7, 3, 128, stride=2), residual(128, 256, stride=2),
-            residual(256, 256, stride=2)
+            convolution(7, 3, 128, stride=2), residual(128, 512, stride=2),
+            residual(512, 1024, stride=2), residual(1024, 1024, stride=1),
         )
         hg_mods = nn.ModuleList(
             [
                 hg_module(
-                    4, [256, 256, 384, 384, 512], [2, 2, 2, 2, 4],
+                    4, [1024, 1024, 1024, 1024, 1024], [2, 2, 2, 2, 4],
                     make_pool_layer=make_pool_layer,
                     make_unpool_layer=make_unpool_layer,
                     make_up_layer=make_layer,
@@ -99,8 +99,8 @@ class HourGlassSqueeze(nn.Module):
                 ) for _ in range(stacks)
             ]
         )
-        cnvs = nn.ModuleList([convolution(3, 256, 256) for _ in range(stacks)])
-        inters = nn.ModuleList([residual(256, 256) for _ in range(stacks - 1)])
+        cnvs = nn.ModuleList([convolution(3, 1024, 1024) for _ in range(stacks)])
+        inters = nn.ModuleList([residual(1024, 1024) for _ in range(stacks - 1)])
         cnvs_ = nn.ModuleList([self._merge_mod() for _ in range(stacks - 1)])
         inters_ = nn.ModuleList([self._merge_mod() for _ in range(stacks - 1)])
 

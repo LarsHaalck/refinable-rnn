@@ -66,7 +66,7 @@ class ModelInterface():
             channels=self.channels,
             freeze=freeze_encoder,
             type=type,
-            pretrained=True
+            pretrained=False
         )
         encoder_dim = encoder.get_hidden_dim()
 

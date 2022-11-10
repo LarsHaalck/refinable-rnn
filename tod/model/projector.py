@@ -70,7 +70,7 @@ class Projector2dx8(BaseNetwork):
         super().__init__()
 
         self.upsample = nn.Sequential(
-            nn.ConvTranspose2d(256, 64, kernel_size=(2, 2), stride=(2, 2)), nn.ReLU(),
+            nn.ConvTranspose2d(1024, 64, kernel_size=(2, 2), stride=(2, 2)), nn.ReLU(),
             nn.ConvTranspose2d(64, 16, kernel_size=(2, 2), stride=(2, 2)), nn.ReLU(),
             nn.ConvTranspose2d(16, 1, kernel_size=(2, 2), stride=(2, 2))
         )
